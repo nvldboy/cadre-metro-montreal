@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#171918">
+  <title>Configuration des DEL du métro</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: #151716;
+      --panel: #222523;
+      --panel-strong: #2c302d;
+      --text: #f4f0e7;
+      --muted: #a9afa9;
+      --border: #404641;
+      --green: #00b35a;
+      --green-soft: #143c29;
+      --focus: #ffd84a;
+      --danger: #ff5e69;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 50% -20%, #304036 0, transparent 36rem),
+        var(--background);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.45;
+    }
+    main {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      padding: 24px 16px 48px;
+    }
+    .eyebrow {
+      margin: 0 0 6px;
+      color: var(--green);
+      font-size: .78rem;
+      font-weight: 750;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 0;
+      max-width: 16ch;
+      font-size: clamp(2rem, 8vw, 3.5rem);
+      line-height: .98;
+      letter-spacing: -.045em;
+    }
+    .intro {
+      max-width: 58ch;
+      margin: 16px 0 24px;
+      color: var(--muted);
+    }
+    .progress-shell {
+      height: 10px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: #0c0e0d;
+    }
+    .progress-bar {
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #008c46, #42d885);
+      transition: width .25s ease;
+    }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      margin: 8px 2px 18px;
+      color: var(--muted);
+      font-size: .88rem;
+    }
+    .card {
+      padding: 20px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: color-mix(in srgb, var(--panel) 94%, transparent);
+      box-shadow: 0 18px 50px #0005;
+    }
+    .led-number {
+      margin: 0;
+      font-size: clamp(2.25rem, 11vw, 4.75rem);
+      line-height: 1;
+      letter-spacing: -.055em;
+    }
+    .index {
+      margin: 6px 0 20px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: .86rem;
+    }
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    select, button {
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel-strong);
+      color: var(--text);
+      padding: 10px 12px;
+      font: inherit;
+    }
+    select:focus, button:focus-visible {
+      outline: 3px solid color-mix(in srgb, var(--focus) 65%, transparent);
+      outline-offset: 2px;
+    }
+    button {
+      cursor: pointer;
+      font-weight: 700;
+    }
+    button:disabled {
+      cursor: not-allowed;
+      opacity: .45;
+    }
+    .primary {
+      margin-top: 12px;
+      border-color: #36d581;
+      background: var(--green);
+      color: #07170e;
+    }
+    .secondary { background: #292d2a; }
+    .nav {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .identify { grid-column: 1 / -1; }
+    h2 {
+      margin: 28px 0 12px;
+      font-size: 1.05rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+      gap: 7px;
+    }
+    .grid button {
+      min-height: 42px;
+      padding: 5px;
+      border-radius: 9px;
+      color: var(--muted);
+    }
+    .grid button.assigned {
+      border-color: #287d50;
+      background: var(--green-soft);
+      color: #8af0b8;
+    }
+    .grid button.current {
+      border-color: var(--focus);
+      box-shadow: 0 0 0 2px #ffd84a33;
+      color: var(--text);
+    }
+    .finish {
+      display: none;
+      margin-top: 20px;
+      border-color: #287d50;
+      background: #183626;
+    }
+    .finish.visible { display: block; }
+    .finish h2 { margin-top: 0; }
+    .finish button {
+      border-color: #36d581;
+      background: var(--green);
+      color: #07170e;
+    }
+    .note {
+      margin-top: 22px;
+      padding: 14px 16px;
+      border-left: 3px solid var(--focus);
+      background: #24251f;
+      color: #ddd8c8;
+      font-size: .92rem;
+    }
+    .status {
+      min-height: 1.5em;
+      margin: 14px 0 0;
+      color: var(--muted);
+    }
+    .status.error { color: var(--danger); }
+    .status.success { color: #78e7a9; }
+    @media (min-width: 620px) {
+      main { padding-top: 42px; }
+      .card { padding: 28px; }
+      .nav {
+        grid-template-columns: 1fr 1fr 1.35fr;
+      }
+      .identify { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">Cadre du métro · Première utilisation</p>
+  <h1>Associe chaque lumière à sa station.</h1>
+  <p class="intro">
+    Repère la DEL qui clignote, choisis la station placée devant elle, puis
+    passe à la suivante. Le Pico mémorise chaque réponse au fur et à mesure.
+  </p>
+
+  <div class="progress-shell" aria-hidden="true">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+  <div class="progress-label">
+    <span id="progress-text">Chargement…</span>
+    <span id="remaining-text"></span>
+  </div>
+
+  <section class="card">
+    <p class="eyebrow">DEL qui clignote actuellement</p>
+    <h2 class="led-number" id="led-number">DEL physique —</h2>
+    <p class="index" id="led-index">Index interne —</p>
+
+    <label for="station">Quelle station se trouve devant cette DEL?</label>
+    <select id="station">
+      <option value="">Choisir une station…</option>
+    </select>
+    <button class="primary" id="assign" type="button" disabled>
+      Associer et passer à la suivante
+    </button>
+
+    <div class="nav">
+      <button class="secondary" id="previous" type="button">DEL précédente</button>
+      <button class="secondary" id="next" type="button">DEL suivante</button>
+      <button class="secondary identify" id="identify" type="button">
+        Relancer le clignotement
+      </button>
+    </div>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <h2>Les 68 DEL physiques</h2>
+  <div class="grid" id="led-grid" aria-label="Sélection des DEL"></div>
+
+  <section class="card finish" id="finish">
+    <h2>Les 68 stations sont associées.</h2>
+    <p>
+      Enregistre la correspondance. Toutes les DEL deviendront vertes, puis le
+      Pico redémarrera automatiquement en mode normal.
+    </p>
+    <button id="complete" type="button">Enregistrer et redémarrer</button>
+  </section>
+
+  <p class="note">
+    Pour recommencer plus tard, supprime le fichier
+    <code>led_mapping.json</code> du Pico avec Thonny, puis redémarre-le.
+  </p>
+</main>
+
+<script>
+  const elements = {
+    progressBar: document.getElementById("progress-bar"),
+    progressText: document.getElementById("progress-text"),
+    remainingText: document.getElementById("remaining-text"),
+    ledNumber: document.getElementById("led-number"),
+    ledIndex: document.getElementById("led-index"),
+    station: document.getElementById("station"),
+    assign: document.getElementById("assign"),
+    previous: document.getElementById("previous"),
+    next: document.getElementById("next"),
+    identify: document.getElementById("identify"),
+    status: document.getElementById("status"),
+    grid: document.getElementById("led-grid"),
+    finish: document.getElementById("finish"),
+    complete: document.getElementById("complete")
+  };
+
+  let state;
+  let current = 0;
+  const previewMode = location.pathname.startsWith("/setup-preview");
+  if (previewMode) {
+    document.querySelector("main > .eyebrow").textContent =
+      "Aperçu local · aucun matériel connecté";
+  }
+
+  async function request(path, payload) {
+    const requestPath = previewMode
+      ? path.replace("/api/", "/api/setup/")
+      : path;
+    const response = await fetch(requestPath, {
+      method: payload === undefined ? "GET" : "POST",
+      headers: payload === undefined ? {} : {"Content-Type": "application/json"},
+      body: payload === undefined ? undefined : JSON.stringify(payload)
+    });
+    const result = await response.json();
+    if (!response.ok || !result.ok) {
+      throw new Error(result.error || "La requête a échoué.");
+    }
+    return result;
+  }
+
+  function showStatus(message, kind = "") {
+    elements.status.textContent = message;
+    elements.status.className = `status ${kind}`.trim();
+  }
+
+  function assignedElsewhere(stationIndex) {
+    return state.assignments.some(
+      (assigned, physical) =>
+        assigned === stationIndex && physical !== current
+    );
+  }
+
+  function renderStationOptions() {
+    const selected = state.assignments[current];
+    const stations = state.stations
+      .map((name, index) => ({name, index}))
+      .filter(item => !assignedElsewhere(item.index))
+      .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+
+    elements.station.replaceChildren();
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Choisir une station…";
+    elements.station.appendChild(placeholder);
+
+    stations.forEach(item => {
+      const option = document.createElement("option");
+      option.value = String(item.index);
+      option.textContent = item.name;
+      option.selected = item.index === selected;
+      elements.station.appendChild(option);
+    });
+    elements.assign.disabled = elements.station.value === "";
+  }
+
+  function renderGrid() {
+    elements.grid.replaceChildren();
+    state.assignments.forEach((assigned, physical) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = String(physical + 1);
+      button.title = assigned === null
+        ? `DEL ${physical + 1}, non associée`
+        : `DEL ${physical + 1}, ${state.stations[assigned]}`;
+      button.classList.toggle("assigned", assigned !== null);
+      button.classList.toggle("current", physical === current);
+      button.addEventListener("click", () => setCurrent(physical));
+      elements.grid.appendChild(button);
+    });
+  }
+
+  function render() {
+    const assignedCount = state.assignments.filter(value => value !== null).length;
+    const percentage = assignedCount / state.assignments.length * 100;
+    elements.progressBar.style.width = `${percentage}%`;
+    elements.progressText.textContent =
+      `${assignedCount} DEL sur ${state.assignments.length} associées`;
+    elements.remainingText.textContent =
+      `${state.assignments.length - assignedCount} restantes`;
+    elements.ledNumber.textContent = `DEL physique ${current + 1}`;
+    elements.ledIndex.textContent = `Index interne ${current}`;
+    elements.finish.classList.toggle(
+      "visible",
+      assignedCount === state.assignments.length
+    );
+    renderStationOptions();
+    renderGrid();
+  }
+
+  async function setCurrent(physical) {
+    current = (physical + state.assignments.length) % state.assignments.length;
+    try {
+      state = await request("/api/identify", {physical_index: current});
+      render();
+      showStatus(
+        previewMode
+          ? `Dans le cadre, la DEL ${current + 1} clignoterait maintenant.`
+          : `La DEL ${current + 1} doit maintenant clignoter.`
+      );
+    } catch (error) {
+      showStatus(error.message, "error");
+    }
+  }
+
+  elements.station.addEventListener("change", () => {
+    elements.assign.disabled = elements.station.value === "";
+  });
+
+  elements.assign.addEventListener("click", async () => {
+    if (elements.station.value === "") return;
+    const stationIndex = Number(elements.station.value);
+    if (!Number.isInteger(stationIndex)) return;
+    elements.assign.disabled = true;
+    try {
+      const assignedPhysical = current;
+      state = await request("/api/assign", {
+        physical_index: assignedPhysical,
+        station_index: stationIndex
+      });
+      current = state.current;
+      render();
+      if (state.complete) {
+        elements.finish.scrollIntoView({behavior: "smooth", block: "center"});
+      }
+      showStatus(
+        `DEL ${assignedPhysical + 1} associée à ${state.stations[stationIndex]}.`,
+        "success"
+      );
+    } catch (error) {
+      showStatus(error.message, "error");
+      elements.assign.disabled = false;
+    }
+  });
+
+  elements.previous.addEventListener("click", () => setCurrent(current - 1));
+  elements.next.addEventListener("click", () => setCurrent(current + 1));
+  elements.identify.addEventListener("click", () => setCurrent(current));
+
+  elements.complete.addEventListener("click", async () => {
+    elements.complete.disabled = true;
+    try {
+      await request("/api/complete", {});
+      showStatus(
+        "Configuration enregistrée. Le Pico redémarre dans quelques secondes…",
+        "success"
+      );
+      elements.complete.textContent = "Redémarrage…";
+    } catch (error) {
+      showStatus(error.message, "error");
+      elements.complete.disabled = false;
+    }
+  });
+
+  request("/api/state")
+    .then(result => {
+      state = result;
+      current = state.current;
+      render();
+      return setCurrent(current);
+    })
+    .catch(error => showStatus(error.message, "error"));
+</script>
+</body>
+</html>

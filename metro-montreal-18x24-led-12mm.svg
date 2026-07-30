@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="18in" height="24in" viewBox="0 0 457.2 609.6">
+<rect width="457.2" height="609.6" fill="#252728"/>
+<g inkscape:groupmode="layer" inkscape:label="Titre"><text x="34" y="42" fill="#F2F0E9" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700">Métro</text><text x="34" y="55" fill="#F2F0E9" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700">Montréal</text></g>
+<g id="ligne-green" inkscape:groupmode="layer" inkscape:label="Ligne green">
+<polyline points="72,520 118,490 162,458 205,432" fill="none" stroke="#00A651" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="205,432 232,395 258,352 286,310" fill="none" stroke="#00A651" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="286,310 320,275 345,230 368,165 392,90" fill="none" stroke="#00A651" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="ligne-orange" inkscape:groupmode="layer" inkscape:label="Ligne orange">
+<polyline points="72,72 96,145 102,250 120,340" fill="none" stroke="#F58220" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="120,340 148,372 176,405 205,432" fill="none" stroke="#F58220" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="205,432 226,405 248,370 268,338 286,310" fill="none" stroke="#F58220" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="286,310 274,270 262,225 245,185" fill="none" stroke="#F58220" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="245,185 276,145 315,105 360,68" fill="none" stroke="#F58220" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="ligne-blue" inkscape:groupmode="layer" inkscape:label="Ligne blue">
+<polyline points="120,340 145,310 155,265 176,225 210,198 245,185" fill="none" stroke="#0072BC" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+<polyline points="245,185 278,176 310,164 342,155" fill="none" stroke="#0072BC" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="ligne-yellow" inkscape:groupmode="layer" inkscape:label="Ligne yellow">
+<polyline points="286,310 346,310 375,330 408,337" fill="none" stroke="#FFD200" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+<g id="stations" inkscape:groupmode="layer" inkscape:label="Stations DEL 12 mm">
+<circle cx="72" cy="520" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="91.09" cy="507.55" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="110.19" cy="495.09" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="128.89" cy="482.08" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="147.33" cy="468.67" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="165.99" cy="455.59" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="185.49" cy="443.8" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="205" cy="432" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="1.4"/>
+<circle cx="217.34" cy="415.09" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="229.68" cy="398.18" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="240.79" cy="380.46" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="251.62" cy="362.54" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="262.78" cy="344.83" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="274.39" cy="327.42" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="286" cy="310" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="1.4"/>
+<circle cx="300.4" cy="295.18" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="314.8" cy="280.36" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="326.41" cy="263.46" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="336.44" cy="245.4" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="346.02" cy="227.13" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="352.91" cy="207.65" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="359.8" cy="188.17" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="366.7" cy="168.69" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="373.11" cy="149.04" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="379.4" cy="129.36" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="385.7" cy="109.68" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="392" cy="90" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="72" cy="72" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="86.25" cy="115.35" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="96.82" cy="159.4" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="99.43" cy="204.96" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="102.1" cy="250.51" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="111.05" cy="295.25" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="120" cy="340" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="1.4"/>
+<circle cx="140.65" cy="363.6" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="161.06" cy="387.4" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="182.05" cy="410.63" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="217.85" cy="415.47" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="230.08" cy="398.51" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="241.23" cy="380.78" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="252.35" cy="363.04" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="263.45" cy="345.28" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="274.68" cy="327.61" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="279.69" cy="288.96" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="273.44" cy="267.9" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="267.78" cy="246.68" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="262.12" cy="225.45" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="253.59" cy="205.22" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="245" cy="185" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="1.4"/>
+<circle cx="259.42" cy="166.4" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="273.83" cy="147.8" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="289.96" cy="130.69" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="306.38" cy="113.84" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="323.65" cy="97.89" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="341.82" cy="82.95" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="360" cy="68" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="136.89" cy="319.73" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="147.98" cy="296.61" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="153.7" cy="270.85" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="164.48" cy="246.95" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="177.25" cy="224.01" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="197.91" cy="207.6" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="220.27" cy="194.19" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="277.68" cy="176.09" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="309.41" cy="164.22" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="342" cy="155" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="349.69" cy="312.54" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+<circle cx="408" cy="337" r="6" fill="#252728" stroke="#F2F0E9" stroke-width="0.65"/>
+</g>
+<g id="noms" inkscape:groupmode="layer" inkscape:label="Noms des stations">
+<text x="81" y="528" text-anchor="start">Angrignon</text>
+<text x="100.09" y="499.55" text-anchor="start">Monk</text>
+<text x="119.19" y="503.09" text-anchor="start">Jolicoeur</text>
+<text x="137.89" y="474.08" text-anchor="start">Verdun</text>
+<text x="156.33" y="476.67" text-anchor="start">De l’Église</text>
+<text x="174.99" y="447.59" text-anchor="start">LaSalle</text>
+<text x="194.49" y="451.8" text-anchor="start">Charlevoix</text>
+<text x="192" y="445" text-anchor="end">Lionel-Groulx</text>
+<text x="226.34" y="423.09" text-anchor="start">Atwater</text>
+<text x="238.68" y="390.18" text-anchor="start">Guy-Concordia</text>
+<text x="249.79" y="388.46" text-anchor="start">Peel</text>
+<text x="260.62" y="354.54" text-anchor="start">McGill</text>
+<text x="271.78" y="352.83" text-anchor="start">Place-des-Arts</text>
+<text x="283.39" y="319.42" text-anchor="start">Saint-Laurent</text>
+<text x="299" y="299" text-anchor="start">Berri-UQAM</text>
+<text x="309.4" y="287.18" text-anchor="start">Beaudry</text>
+<text x="323.8" y="288.36" text-anchor="start">Papineau</text>
+<text x="335.41" y="255.46" text-anchor="start">Frontenac</text>
+<text x="327.44" y="253.4" text-anchor="end">Préfontaine</text>
+<text x="337.02" y="219.13" text-anchor="end">Joliette</text>
+<text x="343.91" y="215.65" text-anchor="end">Pie-IX</text>
+<text x="350.8" y="180.17" text-anchor="end">Viau</text>
+<text x="357.7" y="176.69" text-anchor="end">Assomption</text>
+<text x="364.11" y="141.04" text-anchor="end">Cadillac</text>
+<text x="370.4" y="137.36" text-anchor="end">Langelier</text>
+<text x="376.7" y="101.68" text-anchor="end">Radisson</text>
+<text x="383" y="98" text-anchor="end">Honoré-Beaugrand</text>
+<text x="81" y="64" text-anchor="start">Côte-Vertu</text>
+<text x="95.25" y="123.35" text-anchor="start">Du Collège</text>
+<text x="105.82" y="151.4" text-anchor="start">De la Savane</text>
+<text x="108.43" y="212.96" text-anchor="start">Namur</text>
+<text x="111.1" y="242.51" text-anchor="start">Plamondon</text>
+<text x="120.05" y="303.25" text-anchor="start">Côte-Sainte-Catherine</text>
+<text x="107" y="351" text-anchor="end">Snowdon</text>
+<text x="149.65" y="371.6" text-anchor="start">Villa-Maria</text>
+<text x="170.06" y="379.4" text-anchor="start">Vendôme</text>
+<text x="191.05" y="418.63" text-anchor="start">Place-Saint-Henri</text>
+<text x="226.85" y="407.47" text-anchor="start">Georges-Vanier</text>
+<text x="239.08" y="406.51" text-anchor="start">Lucien-L’Allier</text>
+<text x="250.23" y="372.78" text-anchor="start">Bonaventure</text>
+<text x="261.35" y="371.04" text-anchor="start">Square-Victoria–OACI</text>
+<text x="272.45" y="337.28" text-anchor="start">Place-d’Armes</text>
+<text x="283.68" y="335.61" text-anchor="start">Champ-de-Mars</text>
+<text x="288.69" y="280.96" text-anchor="start">Sherbrooke</text>
+<text x="282.44" y="275.9" text-anchor="start">Mont-Royal</text>
+<text x="276.78" y="238.68" text-anchor="start">Laurier</text>
+<text x="271.12" y="233.45" text-anchor="start">Rosemont</text>
+<text x="262.59" y="197.22" text-anchor="start">Beaubien</text>
+<text x="258" y="175" text-anchor="start">Jean-Talon</text>
+<text x="268.42" y="158.4" text-anchor="start">Jarry</text>
+<text x="282.83" y="155.8" text-anchor="start">Crémazie</text>
+<text x="298.96" y="122.69" text-anchor="start">Sauvé</text>
+<text x="315.38" y="121.84" text-anchor="start">Henri-Bourassa</text>
+<text x="332.65" y="89.89" text-anchor="start">Cartier</text>
+<text x="332.82" y="90.95" text-anchor="end">De la Concorde</text>
+<text x="351" y="60" text-anchor="end">Montmorency</text>
+<text x="145.89" y="327.73" text-anchor="start">Côte-des-Neiges</text>
+<text x="156.98" y="288.61" text-anchor="start">Université-de-Montréal</text>
+<text x="162.7" y="278.85" text-anchor="start">Édouard-Montpetit</text>
+<text x="173.48" y="238.95" text-anchor="start">Outremont</text>
+<text x="186.25" y="232.01" text-anchor="start">Acadie</text>
+<text x="206.91" y="199.6" text-anchor="start">Parc</text>
+<text x="229.27" y="202.19" text-anchor="start">De Castelnau</text>
+<text x="286.68" y="168.09" text-anchor="start">Fabre</text>
+<text x="318.41" y="172.22" text-anchor="start">D’Iberville</text>
+<text x="333" y="147" text-anchor="end">Saint-Michel</text>
+<text x="340.69" y="320.54" text-anchor="end">Jean-Drapeau</text>
+<text x="399" y="329" text-anchor="end">Longueuil–Université-de-Sherbrooke</text>
+</g>
+
+<style>text{fill:#F2F0E9;font-family:Arial,Helvetica,sans-serif;font-size:3.1px;font-weight:400;paint-order:stroke;stroke:#252728;stroke-width:1.4px;stroke-linejoin:round}</style>
+</svg>

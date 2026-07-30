@@ -1,0 +1,12 @@
+secrets.py
+pico/secrets.py
+pico/led_mapping.json
+pico/led_mapping_draft.json
+__pycache__/
+*.pyc
+data/gtfs_stm.zip
+.DS_Store
+.venv/
+tmp/
+*.log
+PICO_2_W_PRET_A_COPIER/SAUVEGARDE_CONTENU_PICO.zip

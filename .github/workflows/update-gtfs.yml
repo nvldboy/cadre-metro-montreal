@@ -1,0 +1,59 @@
+name: Mettre à jour le GTFS
+
+on:
+  schedule:
+    # La STM publie habituellement le prochain horaire avant son entrée en
+    # vigueur. Une vérification chaque lundi limite les téléchargements.
+    - cron: "17 13 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Récupérer le projet
+        uses: actions/checkout@v4
+
+      - name: Installer Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Télécharger le GTFS STM
+        run: |
+          mkdir -p data
+          curl --fail --location --retry 3 --retry-delay 5 \
+            https://www.stm.info/sites/default/files/gtfs/gtfs_stm.zip \
+            --output data/gtfs_stm.zip
+
+      - name: Construire l'horaire compact candidat
+        run: |
+          python scripts/build_metro_schedule.py \
+            data/gtfs_stm.zip \
+            --output /tmp/metro_schedule_candidate.py
+
+      - name: Publier seulement une véritable modification
+        run: |
+          python scripts/publish_gtfs_update.py \
+            --candidate /tmp/metro_schedule_candidate.py
+
+      - name: Tester le programme
+        run: python -m unittest discover -s tests -v
+
+      - name: Enregistrer la nouvelle période
+        run: |
+          git add pico/metro_schedule_data.py updates/latest.json \
+            updates/metro_schedule_data.py
+          if git diff --cached --quiet; then
+            echo "Le GTFS publié est déjà à jour."
+            exit 0
+          fi
+          git config user.name "metro-gtfs-bot"
+          git config user.email "metro-gtfs-bot@users.noreply.github.com"
+          git commit -m "Mettre à jour l'horaire GTFS compact"
+          git push

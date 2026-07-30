@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simulateur du cadre du métro</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --background: #17191a;
+      --panel: #232526;
+      --text: #f4f1e8;
+      --muted: #a5a5a0;
+      --border: #3d4041;
+      --amber: #ff8a00;
+      --red: #ff3347;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    main {
+      width: min(1100px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+    }
+    header, .controls, .line-statuses {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    header { justify-content: space-between; margin-bottom: 16px; }
+    h1 { margin: 0; font-size: 1.35rem; font-weight: 600; }
+    .meta { color: var(--muted); font-size: .9rem; }
+    button, select, .button-link {
+      min-height: 40px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 8px 12px;
+      font: inherit;
+    }
+    button, .button-link { cursor: pointer; }
+    button:hover, .button-link:hover { border-color: var(--text); }
+    .button-link {
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+    }
+    .line-statuses { margin: 14px 0; }
+    .line-state {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: .86rem;
+    }
+    .line-state[data-severity="1"] { border-color: var(--amber); }
+    .line-state[data-severity="2"] { border-color: var(--red); }
+    .map-wrap {
+      position: relative;
+      width: min(100%, 760px);
+      margin: 0 auto;
+      background: #252728;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: background .5s ease, border-color .5s ease;
+    }
+    body.night-preview .map-wrap {
+      background: #111616;
+      border-color: #26302c;
+    }
+    svg { display: block; width: 100%; height: auto; }
+    .led-socket {
+      fill: #111314;
+      stroke: #494c4d;
+      stroke-width: .8;
+    }
+    .led {
+      cursor: pointer;
+      stroke: #f4f1e8;
+      stroke-width: .7;
+      transition: fill .18s ease, opacity .18s ease;
+      filter: drop-shadow(0 0 2.4px currentColor);
+    }
+    .led.train {
+      stroke-width: 1.2;
+      filter:
+        drop-shadow(0 0 2.5px #fff)
+        drop-shadow(0 0 5px currentColor);
+    }
+    .led.slow { animation: pulse 1.8s ease-in-out infinite; }
+    .led.stopped {
+      fill: var(--red) !important;
+      color: var(--red) !important;
+      animation: blink .7s steps(1) infinite;
+    }
+    @keyframes pulse { 50% { opacity: .28; } }
+    @keyframes blink { 50% { opacity: 0; } }
+    .detail {
+      min-height: 1.5em;
+      margin: 12px 0 0;
+      color: var(--muted);
+    }
+    .messages {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+    .messages:empty { display: none; }
+    .messages p { margin: 5px 0; }
+    @media (max-width: 620px) {
+      main { padding: 12px; }
+      header { align-items: flex-start; }
+      .controls { width: 100%; }
+      select { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>Cadre lumineux du métro</h1>
+      <div class="meta" id="meta">Chargement…</div>
+    </div>
+    <div class="controls">
+      <label for="mode">Simulation</label>
+      <select id="mode">
+        <option value="live">Direct — trains théoriques</option>
+        <option value="night">Mode nuit — respiration paisible</option>
+        <option value="normal">Tout normal</option>
+        <option value="green-stop">Interruption verte</option>
+        <option value="orange-stop">Interruption orange</option>
+        <option value="orange-slow">Ralentissement orange</option>
+        <option value="berri-stop">Berri-UQAM fermée</option>
+        <option value="test">Test séquentiel</option>
+      </select>
+      <button id="refresh" type="button">Actualiser</button>
+      <a class="button-link" href="/setup-preview" target="_blank"
+         rel="noopener">Assistant initial</a>
+    </div>
+  </header>
+
+  <div class="line-statuses" id="line-statuses"></div>
+
+  <div class="map-wrap">
+    <svg id="map" viewBox="0 0 457.2 609.6" role="img"
+         aria-label="Simulation des 68 DEL de la carte du métro">
+      <image href="/map.svg" x="0" y="0" width="457.2" height="609.6"></image>
+      <g id="leds"></g>
+    </svg>
+  </div>
+
+  <p class="detail" id="detail">Sélectionnez une station pour voir son état.</p>
+  <div class="messages" id="messages"></div>
+</main>
+
+<script>
+  const lineLabels = {
+    green: "Verte", orange: "Orange", yellow: "Jaune", blue: "Bleue"
+  };
+  const stateLabels = ["normal", "ralenti", "interrompu"];
+  let layout;
+  let liveStatus;
+  let liveTrains;
+  let testTimer;
+  let nightAnimationFrame;
+
+  function emptyStatus() {
+    return {
+      lines: {green: 0, orange: 0, yellow: 0, blue: 0},
+      stations: {}, messages: [], source: ["simulation"],
+      fetched_at: new Date().toLocaleTimeString(), live: false, errors: []
+    };
+  }
+
+  function stationColor(station) {
+    if (station.lines.length > 1) return "#e8e6dc";
+    return layout.colors[station.lines[0]];
+  }
+
+  function stationSeverity(station, status) {
+    let severity = status.stations[station.name] || 0;
+    station.lines.forEach(line => {
+      severity = Math.max(severity, status.lines[line] || 0);
+    });
+    return severity;
+  }
+
+  function render(status, trains = null) {
+    clearInterval(testTimer);
+    cancelAnimationFrame(nightAnimationFrame);
+    document.body.classList.remove("night-preview");
+    document.querySelectorAll(".led").forEach((circle, index) => {
+      const station = layout.stations[index];
+      const severity = stationSeverity(station, status);
+      const trainLevel = trains?.levels?.[index] || 0;
+      const hasTrain = severity === 0 && trainLevel > 0.02;
+      circle.classList.toggle("slow", severity === 1);
+      circle.classList.toggle("stopped", severity === 2);
+      circle.classList.toggle("train", hasTrain);
+      circle.style.fill = severity === 1 ? "#ff8a00" : stationColor(station);
+      circle.style.color = circle.style.fill;
+      circle.style.opacity = trains && severity === 0
+        ? String(0.1 + 0.9 * trainLevel)
+        : "1";
+      circle.dataset.severity = String(severity);
+      circle.dataset.trainLevel = String(trainLevel);
+      const trainText = hasTrain
+        ? `, présence théorique ${Math.round(trainLevel * 100)} %`
+        : "";
+      circle.setAttribute(
+        "aria-label", `${station.name}, ${stateLabels[severity]}${trainText}`
+      );
+    });
+
+    const statuses = document.getElementById("line-statuses");
+    statuses.replaceChildren();
+    Object.keys(lineLabels).forEach(line => {
+      const severity = status.lines[line] || 0;
+      const item = document.createElement("span");
+      item.className = "line-state";
+      item.dataset.severity = String(severity);
+      const count = severity === 2 ? 0 : trains?.counts?.[line];
+      item.textContent = count === undefined
+        ? `${lineLabels[line]} : ${stateLabels[severity]}`
+        : `${lineLabels[line]} : ${count} trains · ${stateLabels[severity]}`;
+      statuses.appendChild(item);
+    });
+
+    if (trains) {
+      const alertSource = status.source.length
+        ? `alertes ${status.source.join(" + ")}`
+        : "alertes non connectées";
+      document.getElementById("meta").textContent =
+        `Prévision GTFS · ${trains.train_count} trains · ` +
+        `${trains.fetched_at.slice(11)} · ${alertSource}`;
+    } else {
+      const source = status.source.length
+        ? status.source.join(" + ")
+        : "simulation locale";
+      document.getElementById("meta").textContent =
+        `Simulation · ${source} · ${status.fetched_at}`;
+    }
+
+    const messages = document.getElementById("messages");
+    messages.replaceChildren();
+    const trainMessages = trains
+      ? [
+          trains.disclaimer,
+          trains.attribution,
+          ...(trains.feed_current ? [] : [
+            `Horaire GTFS expiré le ${trains.feed_end}; une mise à jour est requise.`
+          ])
+        ]
+      : [];
+    [
+      ...trainMessages,
+      ...(status.messages || []),
+      ...(status.errors || [])
+    ].forEach(text => {
+      const paragraph = document.createElement("p");
+      paragraph.textContent = text;
+      messages.appendChild(paragraph);
+    });
+  }
+
+  function runNightAnimation() {
+    cancelAnimationFrame(nightAnimationFrame);
+    document.body.classList.add("night-preview");
+    const startedAt = performance.now();
+    const periodMs = 18000;
+
+    function animate(now) {
+      if (document.getElementById("mode").value !== "night") return;
+      const phase = 2 * Math.PI * ((now - startedAt) % periodMs) / periodMs;
+      const breath = (Math.sin(phase - Math.PI / 2) + 1) / 2;
+      const actualBrightness = 0.006 + 0.024 * breath;
+      // L'opacité est amplifiée pour que 0,6–3 % reste visible sur un écran.
+      const previewOpacity = 0.16 + 0.54 * breath;
+
+      document.querySelectorAll(".led").forEach(circle => {
+        if (circle.dataset.severity === "0") {
+          circle.style.opacity = String(previewOpacity);
+        }
+      });
+      document.getElementById("meta").textContent =
+        "Mode nuit · respiration de 18 s · " +
+        `${(actualBrightness * 100).toFixed(1)} % réel ` +
+        "(amplifié à l’écran)";
+      nightAnimationFrame = requestAnimationFrame(animate);
+    }
+
+    nightAnimationFrame = requestAnimationFrame(animate);
+  }
+
+  function demoStatus(mode) {
+    const status = emptyStatus();
+    if (mode === "green-stop") status.lines.green = 2;
+    if (mode === "orange-stop") status.lines.orange = 2;
+    if (mode === "orange-slow") status.lines.orange = 1;
+    if (mode === "berri-stop") status.stations["Berri-UQAM"] = 2;
+    return status;
+  }
+
+  function runSequence() {
+    const circles = [...document.querySelectorAll(".led")];
+    circles.forEach(circle => { circle.style.opacity = "0.08"; });
+    let index = 0;
+    testTimer = setInterval(() => {
+      circles.forEach(circle => { circle.style.opacity = "0.08"; });
+      circles[index].style.opacity = "1";
+      document.getElementById("detail").textContent =
+        `DEL ${index} : ${layout.stations[index].name}`;
+      index = (index + 1) % circles.length;
+    }, 120);
+  }
+
+  async function refresh(force = false) {
+    [liveStatus, liveTrains] = await Promise.all([
+      fetch(`/api/status${force ? "?force=1" : ""}`)
+        .then(response => response.json()),
+      fetch("/api/trains").then(response => response.json())
+    ]);
+    if (document.getElementById("mode").value === "live") {
+      render(liveStatus, liveTrains);
+    }
+  }
+
+  async function refreshTrains() {
+    liveTrains = await fetch("/api/trains").then(response => response.json());
+    if (document.getElementById("mode").value === "live") {
+      render(liveStatus, liveTrains);
+    }
+  }
+
+  async function initialize() {
+    layout = await fetch("/api/layout").then(response => response.json());
+    const group = document.getElementById("leds");
+    layout.stations.forEach((station, index) => {
+      const socket = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      socket.setAttribute("cx", station.x);
+      socket.setAttribute("cy", station.y);
+      socket.setAttribute("r", "5.1");
+      socket.classList.add("led-socket");
+      group.appendChild(socket);
+
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", station.x);
+      circle.setAttribute("cy", station.y);
+      circle.setAttribute("r", "4.9");
+      circle.classList.add("led");
+      circle.addEventListener("click", () => {
+        const severity = Number(circle.dataset.severity || 0);
+        const trainLevel = Number(circle.dataset.trainLevel || 0);
+        const trainText = trainLevel > 0.02
+          ? ` · présence théorique ${Math.round(trainLevel * 100)} %`
+          : "";
+        document.getElementById("detail").textContent =
+          `DEL ${index} · ${station.name} · ${stateLabels[severity]}${trainText}`;
+      });
+      group.appendChild(circle);
+    });
+    await refresh();
+  }
+
+  document.getElementById("mode").addEventListener("change", event => {
+    if (event.target.value === "live") render(liveStatus, liveTrains);
+    else if (event.target.value === "night") {
+      render(emptyStatus());
+      runNightAnimation();
+      document.getElementById("detail").textContent =
+        "La carte respire entre 0,6 % et 3 % après le dernier train.";
+    }
+    else if (event.target.value === "test") {
+      render(emptyStatus());
+      runSequence();
+    } else if (event.target.value === "normal") {
+      render(demoStatus(event.target.value));
+    } else {
+      render(demoStatus(event.target.value), liveTrains);
+    }
+  });
+  document.getElementById("refresh").addEventListener("click", () => refresh(true));
+  setInterval(() => refresh(false), 60000);
+  setInterval(() => refreshTrains(), 1000);
+  initialize().catch(error => {
+    document.getElementById("meta").textContent = `Erreur : ${error.message}`;
+  });
+</script>
+</body>
+</html>

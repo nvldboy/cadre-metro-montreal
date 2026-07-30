@@ -1,0 +1,134 @@
+CADRE DU MÉTRO DE MONTRÉAL — DOSSIER PRÊT POUR LE PICO 2 W
+================================================================
+
+Le dossier CONTENU_A_COPIER_SUR_LE_PICO contient uniquement les
+17 fichiers nécessaires au fonctionnement du cadre.
+
+IMPORTANT AVANT DE COPIER
+-------------------------
+
+1. Ouvre le fichier secrets.py dans
+   CONTENU_A_COPIER_SUR_LE_PICO.
+2. Remplace NOM_DU_WIFI par le nom exact de ton réseau Wi-Fi.
+3. Remplace MOT_DE_PASSE_WIFI par son mot de passe.
+4. Enregistre le fichier.
+
+Un deuxième réseau de secours peut être ajouté plus bas dans le même fichier :
+
+   WIFI_NETWORKS = [
+       (WIFI_SSID, WIFI_PASSWORD),
+       ("NOM_DU_DEUXIEME_WIFI", "MOT_DE_PASSE_DEUXIEME_WIFI"),
+   ]
+
+Le Pico donne priorité au premier réseau visible. Si celui-ci est absent, il
+essaie le deuxième. Si la connexion disparaît pendant le fonctionnement, les
+animations continuent et une reconnexion est tentée toutes les 10 secondes.
+
+La clé d'accès STM est déjà configurée. Ce dossier est donc privé :
+ne le publie pas et ne l'envoie pas à quelqu'un.
+
+PREMIÈRE INSTALLATION DE MICROPYTHON
+-----------------------------------
+
+Cette étape ne se fait qu'une fois.
+
+1. Télécharge la version STABLE de MicroPython pour « Pico 2 W » :
+   https://micropython.org/download/RPI_PICO2_W/
+2. Débranche le Pico.
+3. Maintiens le bouton BOOTSEL enfoncé et rebranche le câble USB.
+4. Relâche BOOTSEL lorsque le lecteur RPI-RP2 apparaît.
+5. Glisse le fichier .uf2 téléchargé sur RPI-RP2.
+6. Le lecteur disparaît automatiquement : c'est normal.
+
+COPIE DU PROGRAMME AVEC THONNY
+------------------------------
+
+Les fichiers Python ne se copient PAS sur le lecteur RPI-RP2. Ce lecteur
+sert seulement à installer le fichier MicroPython .uf2.
+
+1. Ouvre Thonny et branche le Pico normalement, sans BOOTSEL.
+2. Choisis l'interpréteur « MicroPython (Raspberry Pi Pico) ».
+3. Affiche les fichiers de l'ordinateur et ceux du Raspberry Pi Pico.
+4. Ouvre CONTENU_A_COPIER_SUR_LE_PICO sur l'ordinateur.
+5. Sélectionne les 17 fichiers qui sont DANS ce dossier.
+6. Téléverse-les à la racine « / » du Raspberry Pi Pico.
+7. Redémarre le Pico, ou clique sur « Stop/Restart backend » dans Thonny.
+
+Ne copie pas le dossier parent lui-même : main.py doit se trouver directement
+à la racine du Pico.
+
+SAUVEGARDE_CONTENU_PICO.zip contient exactement les mêmes 17 fichiers.
+Garde-la seulement comme copie de secours : ne dépose pas le fichier .zip
+sur le Pico.
+
+MISE À JOUR AUTOMATIQUE DU GTFS
+-------------------------------
+
+Le logiciel de téléchargement, de validation SHA-256, de sauvegarde et de
+restauration est inclus. Il demeure sans effet tant que l'adresse publique du
+manifeste n'est pas inscrite dans config.py. Une fois le projet publié, le Pico
+vérifiera cette adresse chaque jour et redémarrera seulement lorsqu'un nouvel
+horaire compact aura été validé et installé.
+
+CE QUI ARRIVE AU PREMIER DÉMARRAGE
+---------------------------------
+
+Comme aucun led_mapping.json n'est fourni, l'assistant démarre
+automatiquement :
+
+1. Sur un téléphone ou un ordinateur, connecte-toi au Wi-Fi Metro-Setup.
+2. Mot de passe : metro-led-68
+3. Ouvre http://192.168.4.1
+4. Pour chaque lumière qui clignote, choisis la station correspondante.
+5. Une fois les 68 stations associées, clique sur
+   « Enregistrer et redémarrer ».
+
+Le Pico crée alors led_mapping.json, redémarre, rejoint ton Wi-Fi,
+synchronise son horloge par NTP, démarre la simulation des trains et
+vérifie l'état du réseau STM toutes les 60 secondes.
+
+SIGNIFICATION DES ANIMATIONS
+----------------------------
+
+- Ligne normale : les passages théoriques des trains sont animés à partir
+  des horaires GTFS.
+- Ralentissement : la ligne concernée pulse selon l'état de service STM.
+- Interruption : les trains de cette ligne s'arrêtent et ses stations
+  clignotent en rouge.
+- Nuit : après le dernier train réellement prévu, toute la carte respire
+  très lentement à faible luminosité; elle revient au mode normal au
+  premier départ prévu.
+- DEL intégrée du Pico allumée : dernière lecture STM réussie.
+- DEL intégrée du Pico éteinte : lecture STM impossible; le dernier état
+  valide reste affiché.
+
+SÉCURITÉ LOGICIELLE DÉJÀ ACTIVE
+-------------------------------
+
+- 68 DEL configurées.
+- Luminosité normale limitée à 20 %.
+- Chaque canal RGB est plafonné à 64 sur 255.
+- Budget estimé de la chaîne limité à environ 1 000 mA.
+- Mode nuit limité à environ 0,6 % à 3 % de luminosité réelle.
+
+Le limiteur logiciel réduit fortement la charge, mais il ne remplace pas un
+branchement correct. Coupe toujours l'alimentation avant de modifier les fils.
+
+EN CAS DE PROBLÈME
+------------------
+
+- L'assistant ne s'ouvre pas :
+  reconnecte-toi à Metro-Setup et saisis manuellement http://192.168.4.1.
+- Le Pico clignote sans démarrer après l'association :
+  vérifie NOM_DU_WIFI et MOT_DE_PASSE_WIFI dans secrets.py.
+- Refaire l'association des DEL :
+  supprime led_mapping.json du Pico avec Thonny et redémarre.
+- Voir le diagnostic :
+  branche le Pico à Thonny et ouvre la console « Shell ».
+
+VÉRIFICATION DU LIVRABLE
+------------------------
+
+Le fichier MANIFEST_SHA256.txt contient l'empreinte de chaque fichier livré.
+Tous les fichiers Python, le JSON, la page Web et l'archive ont été vérifiés
+avant la livraison.
