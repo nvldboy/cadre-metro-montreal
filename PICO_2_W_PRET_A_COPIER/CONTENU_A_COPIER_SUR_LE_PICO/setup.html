@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#171918">
-  <title>Configuration des DEL du métro</title>
+  <title data-i18n="pageTitle">Configuration des DEL du métro</title>
   <style>
     :root {
       color-scheme: dark;
@@ -33,6 +33,28 @@
       width: min(760px, 100%);
       margin: 0 auto;
       padding: 24px 16px 48px;
+    }
+    .topbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 6px;
+    }
+    .topbar .eyebrow { margin-bottom: 7px; }
+    .language-picker {
+      flex: 0 0 min(180px, 42vw);
+    }
+    .language-picker label {
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 700;
+    }
+    .language-picker select {
+      min-height: 40px;
+      padding: 6px 9px;
+      font-size: .9rem;
     }
     .eyebrow {
       margin: 0 0 6px;
@@ -200,9 +222,22 @@
 </head>
 <body>
 <main>
-  <p class="eyebrow">Cadre du métro · Première utilisation</p>
-  <h1>Associe chaque lumière à sa station.</h1>
-  <p class="intro">
+  <div class="topbar">
+    <p class="eyebrow" id="setup-eyebrow" data-i18n="eyebrow">
+      Cadre du métro · Première utilisation
+    </p>
+    <div class="language-picker">
+      <label for="language" data-i18n="languageLabel">Langue</label>
+      <select id="language">
+        <option value="fr">Français</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="it">Italiano</option>
+      </select>
+    </div>
+  </div>
+  <h1 data-i18n="heroTitle">Associe chaque lumière à sa station.</h1>
+  <p class="intro" data-i18n="intro">
     Repère la DEL qui clignote, choisis la station placée devant elle, puis
     passe à la suivante. Le Pico mémorise chaque réponse au fur et à mesure.
   </p>
@@ -211,53 +246,237 @@
     <div class="progress-bar" id="progress-bar"></div>
   </div>
   <div class="progress-label">
-    <span id="progress-text">Chargement…</span>
+    <span id="progress-text" data-i18n="loading">Chargement…</span>
     <span id="remaining-text"></span>
   </div>
 
   <section class="card">
-    <p class="eyebrow">DEL qui clignote actuellement</p>
+    <p class="eyebrow" data-i18n="currentLedEyebrow">
+      DEL qui clignote actuellement
+    </p>
     <h2 class="led-number" id="led-number">DEL physique —</h2>
     <p class="index" id="led-index">Index interne —</p>
 
-    <label for="station">Quelle station se trouve devant cette DEL?</label>
+    <label for="station" data-i18n="stationQuestion">
+      Quelle station se trouve devant cette DEL?
+    </label>
     <select id="station">
       <option value="">Choisir une station…</option>
     </select>
-    <button class="primary" id="assign" type="button" disabled>
+    <button
+      class="primary"
+      id="assign"
+      type="button"
+      data-i18n="assignNext"
+      disabled
+    >
       Associer et passer à la suivante
     </button>
 
     <div class="nav">
-      <button class="secondary" id="previous" type="button">DEL précédente</button>
-      <button class="secondary" id="next" type="button">DEL suivante</button>
-      <button class="secondary identify" id="identify" type="button">
+      <button
+        class="secondary"
+        id="previous"
+        type="button"
+        data-i18n="previous"
+      >DEL précédente</button>
+      <button
+        class="secondary"
+        id="next"
+        type="button"
+        data-i18n="next"
+      >DEL suivante</button>
+      <button
+        class="secondary identify"
+        id="identify"
+        type="button"
+        data-i18n="identify"
+      >
         Relancer le clignotement
       </button>
     </div>
     <p class="status" id="status" role="status" aria-live="polite"></p>
   </section>
 
-  <h2>Les 68 DEL physiques</h2>
+  <h2 data-i18n="allLedsTitle">Les 68 DEL physiques</h2>
   <div class="grid" id="led-grid" aria-label="Sélection des DEL"></div>
 
   <section class="card finish" id="finish">
-    <h2>Les 68 stations sont associées.</h2>
-    <p>
+    <h2 data-i18n="finishTitle">Les 68 stations sont associées.</h2>
+    <p data-i18n="finishBody">
       Enregistre la correspondance. Toutes les DEL deviendront vertes, puis le
       Pico redémarrera automatiquement en mode normal.
     </p>
-    <button id="complete" type="button">Enregistrer et redémarrer</button>
+    <button id="complete" type="button" data-i18n="complete">
+      Enregistrer et redémarrer
+    </button>
   </section>
 
-  <p class="note">
+  <p class="note" data-i18n-html="resetNote">
     Pour recommencer plus tard, supprime le fichier
     <code>led_mapping.json</code> du Pico avec Thonny, puis redémarre-le.
   </p>
 </main>
 
 <script>
+  const translations = {
+    fr: {
+      pageTitle: "Configuration des DEL du métro",
+      eyebrow: "Cadre du métro · Première utilisation",
+      previewEyebrow: "Aperçu local · aucun matériel connecté",
+      languageLabel: "Langue",
+      heroTitle: "Associe chaque lumière à sa station.",
+      intro: "Repère la DEL qui clignote, choisis la station placée devant elle, puis passe à la suivante. Le Pico mémorise chaque réponse au fur et à mesure.",
+      loading: "Chargement…",
+      currentLedEyebrow: "DEL qui clignote actuellement",
+      ledPhysical: "DEL physique {number}",
+      ledIndex: "Index interne {index}",
+      stationQuestion: "Quelle station se trouve devant cette DEL?",
+      stationPlaceholder: "Choisir une station…",
+      assignNext: "Associer et passer à la suivante",
+      previous: "DEL précédente",
+      next: "DEL suivante",
+      identify: "Relancer le clignotement",
+      allLedsTitle: "Les 68 DEL physiques",
+      gridAria: "Sélection des DEL",
+      finishTitle: "Les 68 stations sont associées.",
+      finishBody: "Enregistre la correspondance. Toutes les DEL deviendront vertes, puis le Pico redémarrera automatiquement en mode normal.",
+      complete: "Enregistrer et redémarrer",
+      resetNote: "Pour recommencer plus tard, supprime le fichier <code>led_mapping.json</code> du Pico avec Thonny, puis redémarre-le.",
+      requestFailed: "La requête a échoué.",
+      ledUnassigned: "DEL {number}, non associée",
+      ledAssigned: "DEL {number}, {station}",
+      progress: "{assigned} DEL sur {total} associées",
+      remaining: "{count} restantes",
+      identifyPreview: "Dans le cadre, la DEL {number} clignoterait maintenant.",
+      identifyLive: "La DEL {number} doit maintenant clignoter.",
+      assignedStatus: "DEL {number} associée à {station}.",
+      savedRestart: "Configuration enregistrée. Le Pico redémarre dans quelques secondes…",
+      restarting: "Redémarrage…",
+      invalidLed: "Numéro de DEL invalide.",
+      invalidStation: "Station invalide.",
+      duplicateStation: "Cette station est déjà associée à la DEL {number}.",
+      allRequired: "Les 68 DEL doivent être associées à 68 stations différentes."
+    },
+    en: {
+      pageTitle: "Metro LED setup",
+      eyebrow: "Metro frame · First-time setup",
+      previewEyebrow: "Local preview · no hardware connected",
+      languageLabel: "Language",
+      heroTitle: "Match each light to its station.",
+      intro: "Find the blinking LED, select the station in front of it, then move to the next one. The Pico saves every answer as you go.",
+      loading: "Loading…",
+      currentLedEyebrow: "LED currently blinking",
+      ledPhysical: "Physical LED {number}",
+      ledIndex: "Internal index {index}",
+      stationQuestion: "Which station is in front of this LED?",
+      stationPlaceholder: "Choose a station…",
+      assignNext: "Assign and move to the next",
+      previous: "Previous LED",
+      next: "Next LED",
+      identify: "Blink this LED again",
+      allLedsTitle: "The 68 physical LEDs",
+      gridAria: "LED selection",
+      finishTitle: "All 68 stations are assigned.",
+      finishBody: "Save the mapping. Every LED will turn green, then the Pico will restart automatically in normal mode.",
+      complete: "Save and restart",
+      resetNote: "To start over later, delete <code>led_mapping.json</code> from the Pico with Thonny, then restart it.",
+      requestFailed: "The request failed.",
+      ledUnassigned: "LED {number}, not assigned",
+      ledAssigned: "LED {number}, {station}",
+      progress: "{assigned} of {total} LEDs assigned",
+      remaining: "{count} remaining",
+      identifyPreview: "On the frame, LED {number} would now be blinking.",
+      identifyLive: "LED {number} should now be blinking.",
+      assignedStatus: "LED {number} assigned to {station}.",
+      savedRestart: "Setup saved. The Pico will restart in a few seconds…",
+      restarting: "Restarting…",
+      invalidLed: "Invalid LED number.",
+      invalidStation: "Invalid station.",
+      duplicateStation: "This station is already assigned to LED {number}.",
+      allRequired: "The 68 LEDs must be assigned to 68 different stations."
+    },
+    es: {
+      pageTitle: "Configuración de los LED del metro",
+      eyebrow: "Marco del metro · Primera configuración",
+      previewEyebrow: "Vista previa local · sin equipo conectado",
+      languageLabel: "Idioma",
+      heroTitle: "Asocia cada luz con su estación.",
+      intro: "Localiza el LED que parpadea, elige la estación situada delante y pasa al siguiente. El Pico guarda cada respuesta automáticamente.",
+      loading: "Cargando…",
+      currentLedEyebrow: "LED que parpadea ahora",
+      ledPhysical: "LED físico {number}",
+      ledIndex: "Índice interno {index}",
+      stationQuestion: "¿Qué estación está delante de este LED?",
+      stationPlaceholder: "Elegir una estación…",
+      assignNext: "Asociar y pasar al siguiente",
+      previous: "LED anterior",
+      next: "LED siguiente",
+      identify: "Repetir el parpadeo",
+      allLedsTitle: "Los 68 LED físicos",
+      gridAria: "Selección de LED",
+      finishTitle: "Las 68 estaciones están asociadas.",
+      finishBody: "Guarda la correspondencia. Todos los LED se pondrán verdes y el Pico se reiniciará automáticamente en modo normal.",
+      complete: "Guardar y reiniciar",
+      resetNote: "Para empezar de nuevo más tarde, elimina <code>led_mapping.json</code> del Pico con Thonny y reinícialo.",
+      requestFailed: "La solicitud ha fallado.",
+      ledUnassigned: "LED {number}, sin asociar",
+      ledAssigned: "LED {number}, {station}",
+      progress: "{assigned} de {total} LED asociados",
+      remaining: "{count} pendientes",
+      identifyPreview: "En el marco, el LED {number} parpadearía ahora.",
+      identifyLive: "El LED {number} debería estar parpadeando.",
+      assignedStatus: "LED {number} asociado con {station}.",
+      savedRestart: "Configuración guardada. El Pico se reiniciará en unos segundos…",
+      restarting: "Reiniciando…",
+      invalidLed: "Número de LED no válido.",
+      invalidStation: "Estación no válida.",
+      duplicateStation: "Esta estación ya está asociada al LED {number}.",
+      allRequired: "Los 68 LED deben asociarse con 68 estaciones diferentes."
+    },
+    it: {
+      pageTitle: "Configurazione dei LED della metro",
+      eyebrow: "Cornice della metro · Prima configurazione",
+      previewEyebrow: "Anteprima locale · nessun dispositivo collegato",
+      languageLabel: "Lingua",
+      heroTitle: "Associa ogni luce alla sua stazione.",
+      intro: "Individua il LED che lampeggia, scegli la stazione davanti ad esso e passa al successivo. Il Pico salva automaticamente ogni risposta.",
+      loading: "Caricamento…",
+      currentLedEyebrow: "LED che lampeggia adesso",
+      ledPhysical: "LED fisico {number}",
+      ledIndex: "Indice interno {index}",
+      stationQuestion: "Quale stazione si trova davanti a questo LED?",
+      stationPlaceholder: "Scegli una stazione…",
+      assignNext: "Associa e passa al successivo",
+      previous: "LED precedente",
+      next: "LED successivo",
+      identify: "Ripeti il lampeggio",
+      allLedsTitle: "I 68 LED fisici",
+      gridAria: "Selezione dei LED",
+      finishTitle: "Tutte le 68 stazioni sono associate.",
+      finishBody: "Salva la corrispondenza. Tutti i LED diventeranno verdi, poi il Pico si riavvierà automaticamente in modalità normale.",
+      complete: "Salva e riavvia",
+      resetNote: "Per ricominciare in seguito, elimina <code>led_mapping.json</code> dal Pico con Thonny, quindi riavvialo.",
+      requestFailed: "La richiesta non è riuscita.",
+      ledUnassigned: "LED {number}, non associato",
+      ledAssigned: "LED {number}, {station}",
+      progress: "{assigned} LED su {total} associati",
+      remaining: "{count} rimanenti",
+      identifyPreview: "Sulla cornice, il LED {number} lampeggerebbe adesso.",
+      identifyLive: "Il LED {number} dovrebbe lampeggiare adesso.",
+      assignedStatus: "LED {number} associato a {station}.",
+      savedRestart: "Configurazione salvata. Il Pico si riavvierà tra pochi secondi…",
+      restarting: "Riavvio…",
+      invalidLed: "Numero del LED non valido.",
+      invalidStation: "Stazione non valida.",
+      duplicateStation: "Questa stazione è già associata al LED {number}.",
+      allRequired: "I 68 LED devono essere associati a 68 stazioni diverse."
+    }
+  };
+
   const elements = {
+    language: document.getElementById("language"),
+    eyebrow: document.getElementById("setup-eyebrow"),
     progressBar: document.getElementById("progress-bar"),
     progressText: document.getElementById("progress-text"),
     remainingText: document.getElementById("remaining-text"),
@@ -277,9 +496,59 @@
   let state;
   let current = 0;
   const previewMode = location.pathname.startsWith("/setup-preview");
-  if (previewMode) {
-    document.querySelector("main > .eyebrow").textContent =
-      "Aperçu local · aucun matériel connecté";
+
+  function storedLanguage() {
+    try {
+      return localStorage.getItem("metroSetupLanguage");
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function preferredLanguage() {
+    const queryLanguage = new URLSearchParams(location.search).get("lang");
+    const browserLanguages = navigator.languages || [navigator.language];
+    const candidates = [queryLanguage, storedLanguage(), ...browserLanguages, "fr"];
+    for (const candidate of candidates) {
+      const base = String(candidate || "").toLowerCase().split("-")[0];
+      if (translations[base]) return base;
+    }
+    return "fr";
+  }
+
+  let language = preferredLanguage();
+
+  function text(key, values = {}) {
+    const template = translations[language][key] || translations.fr[key] || key;
+    return template.replace(/\{(\w+)\}/g, (_, name) =>
+      Object.prototype.hasOwnProperty.call(values, name) ? values[name] : `{${name}}`
+    );
+  }
+
+  function applyLanguage() {
+    document.documentElement.lang = language;
+    elements.language.value = language;
+    document.querySelectorAll("[data-i18n]").forEach(element => {
+      element.textContent = text(element.dataset.i18n);
+    });
+    document.querySelectorAll("[data-i18n-html]").forEach(element => {
+      element.innerHTML = text(element.dataset.i18nHtml);
+    });
+    if (previewMode) elements.eyebrow.textContent = text("previewEyebrow");
+    elements.grid.setAttribute("aria-label", text("gridAria"));
+    if (state) render();
+  }
+
+  function translatedError(message) {
+    const raw = String(message || "");
+    if (raw.includes("Numéro de DEL invalide")) return text("invalidLed");
+    if (raw.includes("Station invalide")) return text("invalidStation");
+    if (raw.includes("Cette station est déjà associée")) {
+      const match = raw.match(/(\d+)/);
+      return text("duplicateStation", {number: match ? match[1] : "—"});
+    }
+    if (raw.includes("68 DEL doivent être associées")) return text("allRequired");
+    return language === "fr" && raw ? raw : text("requestFailed");
   }
 
   async function request(path, payload) {
@@ -293,7 +562,7 @@
     });
     const result = await response.json();
     if (!response.ok || !result.ok) {
-      throw new Error(result.error || "La requête a échoué.");
+      throw new Error(result.error || text("requestFailed"));
     }
     return result;
   }
@@ -315,12 +584,12 @@
     const stations = state.stations
       .map((name, index) => ({name, index}))
       .filter(item => !assignedElsewhere(item.index))
-      .sort((a, b) => a.name.localeCompare(b.name, "fr"));
+      .sort((a, b) => a.name.localeCompare(b.name, language));
 
     elements.station.replaceChildren();
     const placeholder = document.createElement("option");
     placeholder.value = "";
-    placeholder.textContent = "Choisir une station…";
+    placeholder.textContent = text("stationPlaceholder");
     elements.station.appendChild(placeholder);
 
     stations.forEach(item => {
@@ -340,8 +609,11 @@
       button.type = "button";
       button.textContent = String(physical + 1);
       button.title = assigned === null
-        ? `DEL ${physical + 1}, non associée`
-        : `DEL ${physical + 1}, ${state.stations[assigned]}`;
+        ? text("ledUnassigned", {number: physical + 1})
+        : text("ledAssigned", {
+            number: physical + 1,
+            station: state.stations[assigned]
+          });
       button.classList.toggle("assigned", assigned !== null);
       button.classList.toggle("current", physical === current);
       button.addEventListener("click", () => setCurrent(physical));
@@ -353,12 +625,15 @@
     const assignedCount = state.assignments.filter(value => value !== null).length;
     const percentage = assignedCount / state.assignments.length * 100;
     elements.progressBar.style.width = `${percentage}%`;
-    elements.progressText.textContent =
-      `${assignedCount} DEL sur ${state.assignments.length} associées`;
-    elements.remainingText.textContent =
-      `${state.assignments.length - assignedCount} restantes`;
-    elements.ledNumber.textContent = `DEL physique ${current + 1}`;
-    elements.ledIndex.textContent = `Index interne ${current}`;
+    elements.progressText.textContent = text("progress", {
+      assigned: assignedCount,
+      total: state.assignments.length
+    });
+    elements.remainingText.textContent = text("remaining", {
+      count: state.assignments.length - assignedCount
+    });
+    elements.ledNumber.textContent = text("ledPhysical", {number: current + 1});
+    elements.ledIndex.textContent = text("ledIndex", {index: current});
     elements.finish.classList.toggle(
       "visible",
       assignedCount === state.assignments.length
@@ -374,13 +649,23 @@
       render();
       showStatus(
         previewMode
-          ? `Dans le cadre, la DEL ${current + 1} clignoterait maintenant.`
-          : `La DEL ${current + 1} doit maintenant clignoter.`
+          ? text("identifyPreview", {number: current + 1})
+          : text("identifyLive", {number: current + 1})
       );
     } catch (error) {
-      showStatus(error.message, "error");
+      showStatus(translatedError(error.message), "error");
     }
   }
+
+  elements.language.addEventListener("change", () => {
+    language = translations[elements.language.value] ? elements.language.value : "fr";
+    try {
+      localStorage.setItem("metroSetupLanguage", language);
+    } catch (_) {
+      // La sélection demeure active pour la session même sans stockage local.
+    }
+    applyLanguage();
+  });
 
   elements.station.addEventListener("change", () => {
     elements.assign.disabled = elements.station.value === "";
@@ -403,11 +688,14 @@
         elements.finish.scrollIntoView({behavior: "smooth", block: "center"});
       }
       showStatus(
-        `DEL ${assignedPhysical + 1} associée à ${state.stations[stationIndex]}.`,
+        text("assignedStatus", {
+          number: assignedPhysical + 1,
+          station: state.stations[stationIndex]
+        }),
         "success"
       );
     } catch (error) {
-      showStatus(error.message, "error");
+      showStatus(translatedError(error.message), "error");
       elements.assign.disabled = false;
     }
   });
@@ -420,17 +708,15 @@
     elements.complete.disabled = true;
     try {
       await request("/api/complete", {});
-      showStatus(
-        "Configuration enregistrée. Le Pico redémarre dans quelques secondes…",
-        "success"
-      );
-      elements.complete.textContent = "Redémarrage…";
+      showStatus(text("savedRestart"), "success");
+      elements.complete.textContent = text("restarting");
     } catch (error) {
-      showStatus(error.message, "error");
+      showStatus(translatedError(error.message), "error");
       elements.complete.disabled = false;
     }
   });
 
+  applyLanguage();
   request("/api/state")
     .then(result => {
       state = result;
@@ -438,7 +724,7 @@
       render();
       return setCurrent(current);
     })
-    .catch(error => showStatus(error.message, "error"));
+    .catch(error => showStatus(translatedError(error.message), "error"));
 </script>
 </body>
 </html>

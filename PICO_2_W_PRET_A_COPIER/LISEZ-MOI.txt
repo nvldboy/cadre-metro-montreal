@@ -1,17 +1,18 @@
 CADRE DU MÉTRO DE MONTRÉAL — DOSSIER PRÊT POUR LE PICO 2 W
 ================================================================
 
-Le dossier CONTENU_A_COPIER_SUR_LE_PICO contient uniquement les
-17 fichiers nécessaires au fonctionnement du cadre.
+Le dossier CONTENU_A_COPIER_SUR_LE_PICO contient les fichiers du programme et
+un modèle de configuration sans mot de passe.
 
 IMPORTANT AVANT DE COPIER
 -------------------------
 
-1. Ouvre le fichier secrets.py dans
+1. Renomme secrets.example.py en secrets.py dans
    CONTENU_A_COPIER_SUR_LE_PICO.
-2. Remplace NOM_DU_WIFI par le nom exact de ton réseau Wi-Fi.
-3. Remplace MOT_DE_PASSE_WIFI par son mot de passe.
-4. Enregistre le fichier.
+2. Ouvre le nouveau fichier secrets.py.
+3. Remplace NOM_DU_WIFI par le nom exact de ton réseau Wi-Fi.
+4. Remplace MOT_DE_PASSE_WIFI par son mot de passe.
+5. Ajoute ta clé API STM et enregistre le fichier.
 
 Un deuxième réseau de secours peut être ajouté plus bas dans le même fichier :
 
@@ -24,8 +25,8 @@ Le Pico donne priorité au premier réseau visible. Si celui-ci est absent, il
 essaie le deuxième. Si la connexion disparaît pendant le fonctionnement, les
 animations continuent et une reconnexion est tentée toutes les 10 secondes.
 
-La clé d'accès STM est déjà configurée. Ce dossier est donc privé :
-ne le publie pas et ne l'envoie pas à quelqu'un.
+Le vrai secrets.py demeure local et ne doit jamais être publié ou envoyé à
+quelqu'un. Le fichier secrets.example.py peut être partagé sans risque.
 
 PREMIÈRE INSTALLATION DE MICROPYTHON
 -----------------------------------
@@ -50,25 +51,25 @@ sert seulement à installer le fichier MicroPython .uf2.
 2. Choisis l'interpréteur « MicroPython (Raspberry Pi Pico) ».
 3. Affiche les fichiers de l'ordinateur et ceux du Raspberry Pi Pico.
 4. Ouvre CONTENU_A_COPIER_SUR_LE_PICO sur l'ordinateur.
-5. Sélectionne les 17 fichiers qui sont DANS ce dossier.
+5. Sélectionne les fichiers qui sont DANS ce dossier, après avoir renommé
+   secrets.example.py en secrets.py.
 6. Téléverse-les à la racine « / » du Raspberry Pi Pico.
 7. Redémarre le Pico, ou clique sur « Stop/Restart backend » dans Thonny.
 
 Ne copie pas le dossier parent lui-même : main.py doit se trouver directement
 à la racine du Pico.
 
-SAUVEGARDE_CONTENU_PICO.zip contient exactement les mêmes 17 fichiers.
-Garde-la seulement comme copie de secours : ne dépose pas le fichier .zip
-sur le Pico.
+Ne dépose jamais un fichier .zip sur le Pico : copie uniquement les fichiers
+qui se trouvent à l'intérieur du dossier.
 
 MISE À JOUR AUTOMATIQUE DU GTFS
 -------------------------------
 
 Le logiciel de téléchargement, de validation SHA-256, de sauvegarde et de
-restauration est inclus. Il demeure sans effet tant que l'adresse publique du
-manifeste n'est pas inscrite dans config.py. Une fois le projet publié, le Pico
-vérifiera cette adresse chaque jour et redémarrera seulement lorsqu'un nouvel
-horaire compact aura été validé et installé.
+restauration est inclus. Il demeure sans effet tant qu'une adresse de manifeste
+accessible au Pico n'est pas inscrite dans config.py. Le Pico vérifiera cette
+adresse chaque jour et redémarrera seulement lorsqu'un nouvel horaire compact
+aura été validé et installé.
 
 CE QUI ARRIVE AU PREMIER DÉMARRAGE
 ---------------------------------
@@ -79,8 +80,10 @@ automatiquement :
 1. Sur un téléphone ou un ordinateur, connecte-toi au Wi-Fi Metro-Setup.
 2. Mot de passe : metro-led-68
 3. Ouvre http://192.168.4.1
-4. Pour chaque lumière qui clignote, choisis la station correspondante.
-5. Une fois les 68 stations associées, clique sur
+4. Choisis français, anglais, espagnol ou italien. La langue du navigateur est
+   détectée automatiquement.
+5. Pour chaque lumière qui clignote, choisis la station correspondante.
+6. Une fois les 68 stations associées, clique sur
    « Enregistrer et redémarrer ».
 
 Le Pico crée alors led_mapping.json, redémarre, rejoint ton Wi-Fi,
@@ -129,6 +132,6 @@ EN CAS DE PROBLÈME
 VÉRIFICATION DU LIVRABLE
 ------------------------
 
-Le fichier MANIFEST_SHA256.txt contient l'empreinte de chaque fichier livré.
-Tous les fichiers Python, le JSON, la page Web et l'archive ont été vérifiés
-avant la livraison.
+Le fichier MANIFEST_SHA256.txt contient l'empreinte de chaque fichier
+partageable livré. Le vrai secrets.py et les archives privées qui pourraient
+le contenir sont volontairement exclus.
