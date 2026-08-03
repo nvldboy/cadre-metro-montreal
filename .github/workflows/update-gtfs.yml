@@ -13,7 +13,7 @@ permissions:
 jobs:
   update:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Récupérer le projet
@@ -27,9 +27,38 @@ jobs:
       - name: Télécharger le GTFS STM
         run: |
           mkdir -p data
-          curl --fail --location --retry 3 --retry-delay 5 \
-            https://www.stm.info/sites/default/files/gtfs/gtfs_stm.zip \
-            --output data/gtfs_stm.zip
+          downloaded=0
+          for url in \
+            "https://www.stm.info/sites/default/files/gtfs/gtfs_stm.zip" \
+            "https://stm.info/sites/default/files/gtfs/gtfs_stm.zip"
+          do
+            echo "Téléchargement depuis ${url}"
+            if curl \
+              --fail \
+              --location \
+              --silent \
+              --show-error \
+              --connect-timeout 30 \
+              --max-time 600 \
+              --retry 4 \
+              --retry-delay 15 \
+              --retry-max-time 300 \
+              --retry-all-errors \
+              --user-agent "cadre-metro-montreal-gtfs-updater/1.0" \
+              --output data/gtfs_stm.zip \
+              "${url}" \
+              && unzip -tq data/gtfs_stm.zip
+            then
+              downloaded=1
+              break
+            fi
+            rm -f data/gtfs_stm.zip
+          done
+
+          if [ "${downloaded}" -ne 1 ]; then
+            echo "::error::Impossible de télécharger un fichier GTFS valide depuis la STM."
+            exit 1
+          fi
 
       - name: Construire l'horaire compact candidat
         run: |
