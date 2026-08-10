@@ -3,6 +3,7 @@
 
 import importlib.util
 import argparse
+import copy
 import json
 import os
 import sys
@@ -25,8 +26,6 @@ sys.path.insert(0, str(SIMULATOR))
 
 from stations import LINE_COLORS, STATION_LINES, STATION_ORDER
 from stm_status import empty_status, parse_service_status
-from transit_status import parse_transit_alerts
-from transit_client import TransitClient
 from train_provider import current_train_payload
 
 STM_URL = "https://api.stm.info/pub/od/i3/v2/messages/etatservice"
@@ -42,11 +41,7 @@ def _load_local_secrets():
     spec.loader.exec_module(module)
     return {
         name: getattr(module, name, "")
-        for name in (
-            "STM_API_KEY",
-            "TRANSIT_API_KEY",
-            "TRANSIT_NETWORK_IDS",
-        )
+        for name in ("STM_API_KEY",)
     }
 
 
@@ -115,7 +110,7 @@ class StatusProvider:
     def __init__(self):
         self.cached = None
         self.cached_at = 0
-        self.transit = None
+        self.last_valid = None
 
     def get(self, force=False):
         now = time.time()
@@ -126,50 +121,41 @@ class StatusProvider:
         ):
             return self.cached
 
-        result = empty_status()
-        result.update({
+        metadata = {
             "source": [],
             "errors": [],
             "fetched_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "live": False,
-        })
+            "stale": False,
+        }
+        result = empty_status()
+        result.update(metadata)
 
         stm_key = _secret("STM_API_KEY")
-        transit_key = _secret("TRANSIT_API_KEY")
 
         if stm_key:
             try:
                 _merge(result, _get_stm_status(stm_key))
                 result["source"].append("STM i3 v2")
+                result["live"] = True
+                self.last_valid = copy.deepcopy(result)
             except Exception as error:
+                if self.last_valid is not None:
+                    # Le Pico conserve lui aussi le dernier état STM valide si
+                    # une requête échoue. Le simulateur doit montrer exactement
+                    # cette même information, sans revenir artificiellement à
+                    # un réseau normal.
+                    result = copy.deepcopy(self.last_valid)
+                    result.update(metadata)
+                    result["source"] = ["STM i3 v2 — dernier état valide"]
+                    result["live"] = True
+                    result["stale"] = True
                 result["errors"].append("STM: {}".format(error))
 
-        if transit_key:
-            try:
-                if self.transit is None:
-                    self.transit = TransitClient(
-                        transit_key,
-                        STATION_ORDER,
-                        _secret("TRANSIT_NETWORK_IDS"),
-                    )
-                alerts = self.transit.fetch_alerts()
-                _merge(
-                    result,
-                    parse_transit_alerts(
-                        alerts,
-                        self.transit.route_map,
-                        self.transit.stop_map,
-                    ),
-                )
-                result["source"].append("Transit v4")
-            except Exception as error:
-                result["errors"].append("Transit: {}".format(error))
-
-        result["live"] = bool(result["source"])
-        if not stm_key and not transit_key:
+        if not stm_key:
             result["messages"].append(
                 "Les trains théoriques fonctionnent sans clé. Ajoute une clé "
-                "STM ou Transit seulement pour superposer les alertes réseau."
+                "STM pour superposer les mêmes alertes réseau que le Pico."
             )
             result["message_count"] = len(result["messages"])
 

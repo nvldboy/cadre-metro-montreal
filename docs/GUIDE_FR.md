@@ -572,6 +572,10 @@ Dans le mode direct :
 
 - les trains sont recalculés chaque seconde dans l’interface Web;
 - l’état STM est actualisé toutes les 60 secondes;
+- les alertes proviennent uniquement de STM i3 v2, comme sur le Pico; les
+  alertes Transit ne sont pas fusionnées à l’affichage;
+- si une lecture STM échoue, le dernier état valide est conservé, comme sur le
+  Pico;
 - le nombre de trains théoriques de chaque ligne est affiché;
 - « alertes STM i3 v2 » confirme que la clé est active.
 
