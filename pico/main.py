@@ -13,6 +13,7 @@ except ImportError:
 from async_stm_api import fetch_service_status_async, prepare_stm_endpoint
 from config import (
     ANIMATION_FRAME_MS,
+    API_STALE_FAILURE_COUNT,
     API_MONITOR_INTERVAL_SECONDS,
     API_TIMEOUT_SECONDS,
     GTFS_AUTO_UPDATE_ENABLED,
@@ -32,6 +33,23 @@ from led_mapping import load_led_mapping
 from led_display import MetroDisplay
 from night_mode import anchored_clock_parts, is_night
 from stm_status import NORMAL, SLOW, STOPPED, empty_status, parse_service_status
+from status_animation import (
+    BOOT,
+    CLOCK_SYNC,
+    CONFIG_ERROR,
+    FATAL_ERROR,
+    GTFS_ERROR,
+    GTFS_UPDATE_ERROR,
+    GTFS_UPDATE_SUCCESS,
+    GTFS_UPDATING,
+    LINE_TEST,
+    READY,
+    SCHEDULE_LOADING,
+    WIFI_CONNECTED,
+    WIFI_RECONNECTING,
+    WIFI_UNAVAILABLE,
+    select_runtime_state,
+)
 from wifi_manager import (
     connect_any,
     connect_any_async,
@@ -69,6 +87,14 @@ service_status = empty_status()
 clock_anchor_epoch = 0
 clock_anchor_ticks = 0
 stm_endpoint = None
+runtime_notice_state = None
+runtime_notice_started_ms = 0
+runtime_notice_duration_ms = 0
+api_failure_count = 0
+recovery_lines = ()
+recovery_started_ms = 0
+runtime_animation_anchor_ticks = time.ticks_ms()
+fatal_animation_state = FATAL_ERROR
 last_render_snapshot = {
     "epoch": 0,
     "trains": 0,
@@ -107,6 +133,49 @@ def _configured():
     return bool(_configured_networks())
 
 
+def _set_runtime_notice(state, duration_ms=0):
+    global runtime_notice_state, runtime_notice_started_ms
+    global runtime_notice_duration_ms
+    runtime_notice_state = state
+    runtime_notice_started_ms = time.ticks_ms()
+    runtime_notice_duration_ms = max(0, int(duration_ms))
+
+
+def _active_runtime_notice(now_ms):
+    global runtime_notice_state
+    if (
+        runtime_notice_state is not None
+        and runtime_notice_duration_ms
+        and time.ticks_diff(now_ms, runtime_notice_started_ms)
+        >= runtime_notice_duration_ms
+    ):
+        runtime_notice_state = None
+    return runtime_notice_state
+
+
+def _play_waiting_state(display, state, duration_ms, attempt=0):
+    started_ms = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), started_ms) < duration_ms:
+        display.show_system_state(
+            state,
+            started_ms,
+            attempt=attempt,
+        )
+        time.sleep_ms(ANIMATION_FRAME_MS)
+
+
+def _wifi_progress_renderer(display):
+    def render_progress(state, elapsed_ms, attempt):
+        display.show_system_state(
+            state,
+            started_ms=0,
+            now_ms=elapsed_ms,
+            attempt=attempt,
+        )
+
+    return render_progress
+
+
 async def wifi_monitor_loop(networks, onboard):
     """Rétablit Internet automatiquement sans arrêter l'animation."""
     global stm_endpoint
@@ -117,28 +186,40 @@ async def wifi_monitor_loop(networks, onboard):
 
         onboard.value(0)
         print("Wi-Fi perdu; recherche d'un réseau de secours.")
+        _set_runtime_notice(WIFI_RECONNECTING)
         try:
             await connect_any_async(networks)
             if sync_clock():
                 _anchor_clock()
             stm_endpoint = None
+            _set_runtime_notice(WIFI_CONNECTED, 1200)
             print("Connexion Wi-Fi rétablie.")
         except Exception as error:
             print("Reconnexion Wi-Fi impossible:", error)
 
 
 def _publish_service_status(parsed):
-    global service_status
+    global service_status, recovery_lines, recovery_started_ms
+    previous = dict(system_status)
     service_status = parsed
     for line_name in system_status:
         system_status[line_name] = STATE_NAMES[
             parsed["lines"].get(line_name, NORMAL)
         ]
+    recovered = tuple(
+        line_name
+        for line_name in system_status
+        if previous.get(line_name, "ok") != "ok"
+        and system_status[line_name] == "ok"
+    )
+    if recovered:
+        recovery_lines = recovered
+        recovery_started_ms = time.ticks_ms()
 
 
 async def animate_loop(display):
     """Anime les trains à 25 Hz et applique immédiatement les interruptions."""
-    global last_render_snapshot
+    global last_render_snapshot, recovery_lines, fatal_animation_state
     # L'horaire compact est volumineux. Il n'est chargé qu'après l'assistant
     # de configuration afin de garder le maximum de mémoire disponible.
     try:
@@ -153,6 +234,7 @@ async def animate_loop(display):
             print("Horaire GTFS restauré; redémarrage.")
             time.sleep(1)
             reset()
+        fatal_animation_state = GTFS_ERROR
         raise
     confirm_schedule()
 
@@ -198,11 +280,33 @@ async def animate_loop(display):
         # panne générale du réseau ne doit pas être confondue avec la fermeture
         # planifiée du métro.
         night_mode = is_night(local_parts, trains_running=bool(positions))
+        feed_current = feed_is_current(local_parts)
+        notice_state = _active_runtime_notice(now_ms)
+        technical_state = select_runtime_state(
+            is_connected(),
+            feed_current,
+            explicit_state=notice_state,
+            api_stale=api_failure_count >= API_STALE_FAILURE_COUNT,
+        )
+        technical_started_ms = (
+            runtime_notice_started_ms
+            if notice_state is not None
+            else runtime_animation_anchor_ticks
+        )
+        if (
+            recovery_lines
+            and time.ticks_diff(now_ms, recovery_started_ms) >= 1600
+        ):
+            recovery_lines = ()
         display.render(
             service_status,
             now_ms,
             levels,
             night_mode=night_mode,
+            technical_state=technical_state,
+            technical_started_ms=technical_started_ms,
+            recovery_lines=recovery_lines,
+            recovery_started_ms=recovery_started_ms,
         )
 
         if night_mode != last_night_mode:
@@ -217,7 +321,7 @@ async def animate_loop(display):
         if current_minute != last_reported_minute:
             last_reported_minute = current_minute
             print("Trains théoriques:", sum(line_counts), line_counts)
-            if not feed_is_current(local_parts):
+            if not feed_current:
                 print("Attention: l'horaire GTFS doit être mis à jour.")
 
         await asyncio.sleep_ms(ANIMATION_FRAME_MS)
@@ -225,7 +329,7 @@ async def animate_loop(display):
 
 async def api_monitor_loop(onboard):
     """Surveille l'état du réseau toutes les 60 secondes sans bloquer l'animation."""
-    global stm_endpoint
+    global stm_endpoint, api_failure_count
     while True:
         started_ms = time.ticks_ms()
         next_delay = API_MONITOR_INTERVAL_SECONDS
@@ -253,6 +357,7 @@ async def api_monitor_loop(onboard):
                     parsed = None
                     gc.collect()
                 onboard.value(1)
+                api_failure_count = 0
                 elapsed_ms = time.ticks_diff(time.ticks_ms(), started_ms)
                 print(
                     "État STM:",
@@ -271,6 +376,7 @@ async def api_monitor_loop(onboard):
                 )
             except Exception as error:
                 onboard.value(0)
+                api_failure_count += 1
                 error_name = getattr(
                     getattr(error, "__class__", None),
                     "__name__",
@@ -295,7 +401,7 @@ async def api_monitor_loop(onboard):
         await asyncio.sleep(next_delay)
 
 
-async def gtfs_update_loop():
+async def gtfs_update_loop(display):
     """Vérifie chaque jour si un nouvel horaire compact est publié."""
     from metro_schedule_data import FEED, GENERATED_AT
     from gtfs_updater import check_and_install_update
@@ -304,6 +410,7 @@ async def gtfs_update_loop():
     while True:
         if is_connected():
             try:
+                _set_runtime_notice(GTFS_UPDATING)
                 updated = await asyncio.wait_for(
                     check_and_install_update(
                         GTFS_UPDATE_MANIFEST_URL,
@@ -314,11 +421,14 @@ async def gtfs_update_loop():
                 )
                 if updated:
                     print("Nouvel horaire GTFS installé; redémarrage.")
-                    await asyncio.sleep(1)
+                    _set_runtime_notice(GTFS_UPDATE_SUCCESS, 1600)
+                    await asyncio.sleep_ms(1600)
                     reset()
+                _set_runtime_notice(None)
                 print("Horaire GTFS automatique vérifié.")
             except Exception as error:
                 print("Mise à jour GTFS ignorée:", error)
+                _set_runtime_notice(GTFS_UPDATE_ERROR, 5000)
         await asyncio.sleep(GTFS_UPDATE_CHECK_INTERVAL_SECONDS)
 
 
@@ -329,7 +439,7 @@ async def main_async(display, onboard, networks):
         wifi_monitor_loop(networks, onboard),
     ]
     if GTFS_AUTO_UPDATE_ENABLED and GTFS_UPDATE_MANIFEST_URL:
-        tasks.append(gtfs_update_loop())
+        tasks.append(gtfs_update_loop(display))
     await asyncio.gather(*tasks)
 
 
@@ -351,25 +461,41 @@ def run():
 
     display = MetroDisplay(stations_map, led_mapping)
     gc.collect()
-    display.test_sequence()
+    display.play_system_animation(
+        BOOT,
+        2800,
+        physical_order=True,
+    )
+    display.play_system_animation(LINE_TEST, 1200)
 
     networks = _configured_networks()
     if not networks:
         print("Copier secrets.example.py vers secrets.py et compléter le Wi-Fi.")
-        display.show_configuration_error()
+        started_ms = time.ticks_ms()
         while True:
+            display.show_system_state(CONFIG_ERROR, started_ms)
             onboard.toggle()
-            time.sleep_ms(500)
+            time.sleep_ms(ANIMATION_FRAME_MS)
 
+    wifi_progress = _wifi_progress_renderer(display)
+    wifi_attempt = 0
     while True:
         try:
-            connect_any(networks)
+            connect_any(networks, progress_callback=wifi_progress)
+            display.play_system_animation(WIFI_CONNECTED, 1200)
+            display.show_system_state(CLOCK_SYNC, 0)
             if sync_clock():
                 break
         except Exception as error:
             print("Initialisation réseau impossible:", error)
         onboard.toggle()
-        time.sleep(5)
+        _play_waiting_state(
+            display,
+            WIFI_UNAVAILABLE,
+            5000,
+            attempt=wifi_attempt,
+        )
+        wifi_attempt += 1
 
     _anchor_clock()
     if STM_API_KEY and STM_API_KEY != "CLE_API_STM":
@@ -377,12 +503,33 @@ def run():
             stm_endpoint = prepare_stm_endpoint()
         except Exception as error:
             print("Résolution STM reportée:", error)
+    display.play_system_animation(SCHEDULE_LOADING, 1200)
+    display.play_system_animation(READY, 1300)
     print("Horloge NTP synchronisée; démarrage des tâches.")
 
     try:
         asyncio.run(main_async(display, onboard, networks))
-    finally:
+    except Exception as error:
+        print("Erreur fatale du programme:", error)
+        started_ms = time.ticks_ms()
+        while True:
+            display.show_system_state(fatal_animation_state, started_ms)
+            onboard.toggle()
+            time.sleep_ms(ANIMATION_FRAME_MS)
+    else:
         display.clear()
 
 
-run()
+try:
+    run()
+except Exception as fatal_startup_error:
+    print("Erreur fatale au démarrage:", fatal_startup_error)
+    emergency_display = MetroDisplay()
+    emergency_started_ms = time.ticks_ms()
+    while True:
+        emergency_display.show_system_state(
+            FATAL_ERROR,
+            emergency_started_ms,
+            physical_order=True,
+        )
+        time.sleep_ms(ANIMATION_FRAME_MS)

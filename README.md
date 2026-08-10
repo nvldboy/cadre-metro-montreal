@@ -122,9 +122,16 @@ Ouvre ensuite :
 | Changements répartis sur le réseau | Chaque rame suit son propre horaire légèrement désynchronisé |
 | Blanc | Correspondance entre plusieurs lignes |
 | Pulsation ambre | Service ralenti ou perturbé |
-| Clignotement rouge | Ligne interrompue ou station fermée |
-| Respiration lente et très faible | Mode nuit |
-| Magenta fixe au démarrage | Configuration Wi-Fi absente |
+| Deux éclats rouges | Ligne interrompue |
+| Trois éclats rouges sur une DEL | Station fermée |
+| Balayage dans la couleur d’une ligne | Reprise du service |
+| Chenillard cyan | Connexion ou reconnexion Wi-Fi |
+| Magenta long–court–court | Configuration absente ou invalide |
+| Respiration à environ 0,2–0,9 % | Mode nuit après le dernier train |
+
+Le simulateur contient maintenant des aperçus séparés pour le démarrage, le
+Wi-Fi, la synchronisation de l’heure, les erreurs GTFS, les mises à jour et la
+protection électrique.
 
 ## Matériel et sécurité
 

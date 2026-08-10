@@ -45,6 +45,7 @@ sys.modules["neopixel"] = neopixel
 import led_display
 from led_display import MetroDisplay
 from stations import LINE_COLORS, STM_SCREEN_COLORS, STATION_INDEX
+from status_animation import GTFS_UPDATING
 from stm_status import STOPPED, empty_status
 
 led_display.time.ticks_diff = lambda first, second: first - second
@@ -107,7 +108,40 @@ class LedDisplayMappingTests(unittest.TestCase):
         display.render(status, now_ms=0, night_mode=True)
 
         physical_index = STATION_INDEX["Radisson"]
-        self.assertEqual(display.pixels[physical_index], (0, 8, 0))
+        self.assertEqual(display.pixels[physical_index], (0, 4, 0))
+
+    def test_line_interruption_and_station_closure_use_distinct_rhythms(self):
+        station_name = "Radisson"
+        index = STATION_INDEX[station_name]
+
+        line_display = MetroDisplay(self.stations_map)
+        line_status = empty_status()
+        line_status["lines"]["green"] = STOPPED
+        line_display.render(line_status, now_ms=300)
+
+        station_display = MetroDisplay(self.stations_map)
+        station_status = empty_status()
+        station_status["stations"][station_name] = STOPPED
+        station_display.render(station_status, now_ms=300)
+
+        self.assertEqual(line_display.pixels[index], (0, 0, 0))
+        self.assertEqual(station_display.pixels[index], (0, 51, 0))
+
+    def test_technical_overlay_never_hides_an_interruption(self):
+        display = MetroDisplay(self.stations_map)
+        status = empty_status()
+        status["lines"]["green"] = STOPPED
+
+        display.render(
+            status,
+            now_ms=0,
+            train_levels=[0.0] * 68,
+            technical_state=GTFS_UPDATING,
+            technical_started_ms=0,
+        )
+
+        index = STATION_INDEX["Radisson"]
+        self.assertEqual(display.pixels[index], (0, 51, 0))
 
     def test_unoccupied_day_stations_are_off(self):
         display = MetroDisplay(self.stations_map)
@@ -146,6 +180,7 @@ class LedDisplayMappingTests(unittest.TestCase):
             sum(bright_display.pixels[index]),
             sum(dim_display.pixels[index]),
         )
+        self.assertLessEqual(max(bright_display.pixels[index]), 2)
 
 
 if __name__ == "__main__":

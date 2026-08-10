@@ -35,13 +35,18 @@ LED_MAX_CHANNEL_VALUE = 64
 NIGHT_MODE_ENABLED = True
 NIGHT_START_HOUR = 23
 NIGHT_END_HOUR = 6
-NIGHT_BRIGHTNESS = 0.03
-# Respiration très lente de toute la carte, entre 0,6 % et 3 % de luminosité
-# réelle avec les valeurs ci-dessous.
+NIGHT_BRIGHTNESS = 0.015
+# Respiration très lente de toute la carte, entre environ 0,2 % et 0,9 % de
+# luminosité réelle. Le minimum reste perceptible sans éclairer la pièce.
 NIGHT_AMBIENT_ENABLED = True
 NIGHT_AMBIENT_PERIOD_MS = 18000
-NIGHT_AMBIENT_MIN_LEVEL = 0.20
-NIGHT_AMBIENT_MAX_LEVEL = 1.00
+NIGHT_AMBIENT_MIN_LEVEL = 0.15
+NIGHT_AMBIENT_MAX_LEVEL = 0.60
+
+# Animations techniques. Elles sont volontairement moins lumineuses que les
+# trains et passent toutes par le même limiteur de courant.
+STATUS_BRIGHTNESS = 0.12
+API_STALE_FAILURE_COUNT = 3
 
 # Assistant de première configuration
 SETUP_AP_SSID = "Metro-Setup"
@@ -83,4 +88,5 @@ GTFS_UPDATE_TIMEOUT_SECONDS = 120
 # 40 ms = 25 images/s, dans la plage demandée de 20 à 30 Hz.
 ANIMATION_FRAME_MS = 40
 SLOW_PULSE_PERIOD_MS = 1800
-STOP_BLINK_PERIOD_MS = 700
+STOP_LINE_PATTERN_PERIOD_MS = 2400
+STOP_STATION_PATTERN_PERIOD_MS = 2000

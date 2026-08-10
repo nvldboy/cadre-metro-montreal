@@ -17,10 +17,12 @@ from config import (
     NUMBER_OF_LEDS,
     PIXEL_TIMING,
     SLOW_PULSE_PERIOD_MS,
-    STOP_BLINK_PERIOD_MS,
+    STATUS_BRIGHTNESS,
+    STOP_LINE_PATTERN_PERIOD_MS,
+    STOP_STATION_PATTERN_PERIOD_MS,
     TRAIN_BASE_LEVEL,
 )
-from power_safety import write_limited
+from power_safety import frame_requires_limiting, write_limited
 from stations import (
     LINE_COLORS,
     STATION_INDEX,
@@ -28,6 +30,12 @@ from stations import (
     STATION_ORDER,
 )
 from stm_status import NORMAL, SLOW, STOPPED
+from status_animation import (
+    CONFIG_ERROR,
+    POWER_LIMITED,
+    recovery_frame,
+    state_frame,
+)
 
 AMBER = (255, 120, 0)
 RED = (255, 0, 0)
@@ -73,12 +81,23 @@ class MetroDisplay:
         self.logical_to_physical = logical_to_physical
         self.lines_by_led = [[] for _ in range(NUMBER_OF_LEDS)]
         if stations_map:
+            self.line_groups = stations_map["lines"]
             for line_name, led_indexes in stations_map["lines"].items():
                 for led_index in led_indexes:
                     self.lines_by_led[led_index].append(line_name)
         else:
+            self.line_groups = {
+                line_name: []
+                for line_name in LINE_COLORS
+            }
             for station_name, led_index in STATION_INDEX.items():
                 self.lines_by_led[led_index] = STATION_LINES[station_name]
+                for line_name in STATION_LINES[station_name]:
+                    self.line_groups[line_name].append(led_index)
+        self.station_colors = [
+            _normal_station_color(station_name)
+            for station_name in STATION_ORDER
+        ]
         self.last_frame = -ANIMATION_FRAME_MS
         self.clear()
 
@@ -86,8 +105,61 @@ class MetroDisplay:
         write_limited(self.pixels, [OFF] * NUMBER_OF_LEDS)
 
     def show_configuration_error(self):
-        color = _scaled(MAGENTA, BRIGHTNESS)
-        write_limited(self.pixels, [color] * NUMBER_OF_LEDS)
+        self.show_system_state(CONFIG_ERROR)
+
+    def _physical_frame(self, logical_frame, physical_order=False):
+        if physical_order:
+            return logical_frame
+        physical = [OFF] * NUMBER_OF_LEDS
+        for logical_index, color in enumerate(logical_frame):
+            physical[self.logical_to_physical[logical_index]] = color
+        return physical
+
+    def show_system_state(
+        self,
+        state,
+        started_ms=0,
+        now_ms=None,
+        attempt=0,
+        physical_order=False,
+    ):
+        """Affiche une image d'état sans contourner la sécurité électrique."""
+        if now_ms is None:
+            now_ms = time.ticks_ms()
+        elapsed_ms = max(0, time.ticks_diff(now_ms, started_ms))
+        logical = state_frame(
+            state,
+            elapsed_ms,
+            NUMBER_OF_LEDS,
+            attempt=attempt,
+            station_colors=self.station_colors,
+            line_groups=self.line_groups,
+            line_colors=LINE_COLORS,
+        )
+        scaled = [_scaled(color, STATUS_BRIGHTNESS) for color in logical]
+        write_limited(
+            self.pixels,
+            self._physical_frame(scaled, physical_order=physical_order),
+        )
+
+    def play_system_animation(
+        self,
+        state,
+        duration_ms,
+        attempt=0,
+        physical_order=False,
+    ):
+        """Joue une courte séquence bloquante avant le moteur asynchrone."""
+        started_ms = time.ticks_ms()
+        while time.ticks_diff(time.ticks_ms(), started_ms) < duration_ms:
+            self.show_system_state(
+                state,
+                started_ms,
+                attempt=attempt,
+                physical_order=physical_order,
+            )
+            time.sleep_ms(ANIMATION_FRAME_MS)
+        self.clear()
 
     def test_sequence(self, delay_ms=80):
         """Allume chaque DEL et affiche son numéro dans la console."""
@@ -113,6 +185,10 @@ class MetroDisplay:
         now_ms=None,
         train_levels=None,
         night_mode=False,
+        technical_state=None,
+        technical_started_ms=0,
+        recovery_lines=(),
+        recovery_started_ms=0,
     ):
         if now_ms is None:
             now_ms = time.ticks_ms()
@@ -128,8 +204,16 @@ class MetroDisplay:
                 + 1
             ) / 2
         )
-        stopped_on = (now_ms % STOP_BLINK_PERIOD_MS) < (
-            STOP_BLINK_PERIOD_MS // 2
+        line_stop_phase = now_ms % STOP_LINE_PATTERN_PERIOD_MS
+        line_stopped_on = (
+            line_stop_phase < 180
+            or 360 <= line_stop_phase < 540
+        )
+        station_stop_phase = now_ms % STOP_STATION_PATTERN_PERIOD_MS
+        station_stopped_on = (
+            station_stop_phase < 140
+            or 280 <= station_stop_phase < 420
+            or 560 <= station_stop_phase < 700
         )
         brightness = NIGHT_BRIGHTNESS if night_mode else BRIGHTNESS
         night_ambient_level = 0.0
@@ -150,14 +234,26 @@ class MetroDisplay:
                 * breath
             )
         frame = [OFF] * NUMBER_OF_LEDS
+        severities = [NORMAL] * NUMBER_OF_LEDS
 
         for station_name, logical_index in STATION_INDEX.items():
             physical_index = self.logical_to_physical[logical_index]
-            severity = status["stations"].get(station_name, NORMAL)
+            station_severity = status["stations"].get(station_name, NORMAL)
+            line_severity = NORMAL
             for line_name in self.lines_by_led[logical_index]:
-                severity = max(severity, status["lines"].get(line_name, NORMAL))
+                line_severity = max(
+                    line_severity,
+                    status["lines"].get(line_name, NORMAL),
+                )
+            severity = max(station_severity, line_severity)
+            severities[logical_index] = severity
 
             if severity == STOPPED:
+                stopped_on = (
+                    line_stopped_on
+                    if line_severity == STOPPED
+                    else station_stopped_on
+                )
                 color = RED if stopped_on else OFF
                 factor = brightness
             elif severity == SLOW:
@@ -177,5 +273,43 @@ class MetroDisplay:
                     )
 
             frame[physical_index] = _scaled(color, factor)
+
+        if not night_mode and technical_state is not None:
+            technical = state_frame(
+                technical_state,
+                max(0, time.ticks_diff(now_ms, technical_started_ms)),
+                NUMBER_OF_LEDS,
+                station_colors=self.station_colors,
+                line_groups=self.line_groups,
+                line_colors=LINE_COLORS,
+            )
+            for logical_index, color in enumerate(technical):
+                if color != OFF and severities[logical_index] == NORMAL:
+                    physical_index = self.logical_to_physical[logical_index]
+                    frame[physical_index] = _scaled(color, STATUS_BRIGHTNESS)
+
+        if not night_mode and recovery_lines:
+            recovery = recovery_frame(
+                max(0, time.ticks_diff(now_ms, recovery_started_ms)),
+                recovery_lines,
+                NUMBER_OF_LEDS,
+                self.line_groups,
+                LINE_COLORS,
+            )
+            for logical_index, color in enumerate(recovery):
+                if color != OFF and severities[logical_index] == NORMAL:
+                    physical_index = self.logical_to_physical[logical_index]
+                    frame[physical_index] = _scaled(color, BRIGHTNESS)
+
+        if not night_mode and frame_requires_limiting(frame):
+            warning = state_frame(
+                POWER_LIMITED,
+                now_ms,
+                NUMBER_OF_LEDS,
+            )
+            for logical_index, color in enumerate(warning):
+                if color != OFF and severities[logical_index] == NORMAL:
+                    physical_index = self.logical_to_physical[logical_index]
+                    frame[physical_index] = _scaled(color, STATUS_BRIGHTNESS)
 
         write_limited(self.pixels, frame)

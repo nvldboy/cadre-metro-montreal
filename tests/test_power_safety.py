@@ -14,6 +14,7 @@ from night_mode import anchored_clock_parts, is_night, is_night_hour
 from power_safety import (
     color_for_pixel_driver,
     estimate_frame_current_ma,
+    frame_requires_limiting,
     limit_frame,
 )
 
@@ -44,6 +45,11 @@ class PowerSafetyTests(unittest.TestCase):
                 for channel in color
             )
         )
+        self.assertTrue(frame_requires_limiting(frame))
+
+    def test_low_power_frame_does_not_trigger_warning(self):
+        frame = [(0, 20, 0)] * NUMBER_OF_LEDS
+        self.assertFalse(frame_requires_limiting(frame))
 
     def test_negative_and_excessive_channels_are_clamped(self):
         frame = [(-50, 12, 999)] + [(0, 0, 0)] * (NUMBER_OF_LEDS - 1)

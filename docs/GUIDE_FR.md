@@ -24,11 +24,13 @@ utilisant :
 | Changements répartis sur le réseau | Chaque rame suit son propre horaire légèrement désynchronisé |
 | Blanc | Station de correspondance desservie par plusieurs lignes |
 | Pulsation ambre | Service ralenti ou perturbé |
-| Clignotement rouge | Ligne interrompue ou station fermée |
-| Magenta fixe au démarrage | Configuration Wi‑Fi absente ou incomplète |
-| Séquence blanche, une DEL à la fois | Autotest et vérification de l’ordre des DEL |
+| Deux éclats rouges | Ligne interrompue |
+| Trois éclats rouges sur une DEL | Station fermée |
+| Magenta long–court–court | Configuration absente ou invalide |
+| Point blanc parcourant la chaîne | Mise sous tension et autotest |
+| Chenillard cyan | Connexion ou reconnexion Wi‑Fi |
 | Une DEL blanche clignote et le Wi‑Fi `Metro-Setup` apparaît | Assistant de première configuration |
-| Respiration très lente après le dernier train | Mode nuit automatique |
+| Respiration à environ 0,2–0,9 % après le dernier train | Mode nuit automatique |
 
 Lorsqu’une ligne est interrompue, ses trains théoriques sont immédiatement
 retirés de l’animation. Ses stations clignotent en rouge pendant que les autres
@@ -432,8 +434,9 @@ Par défaut :
 - il se termine dès le premier train du matin, ou au plus tard à 6 h;
 - toute la carte respire lentement dans ses couleurs de ligne;
 - un cycle complet dure 18 secondes;
-- la luminosité oscille doucement entre environ 0,6 % et 3 %;
-- les perturbations restent visibles à seulement 3 % pendant la fermeture.
+- la luminosité oscille doucement entre environ 0,2 % et 0,9 %;
+- les perturbations restent visibles à seulement 1,5 % au maximum pendant la
+  fermeture.
 
 Une prolongation d’horaire repousse donc automatiquement le mode nuit. Une
 interruption générale du réseau ne déclenche pas le mode nuit : le programme
@@ -472,8 +475,9 @@ Les stations concernées pulsent en ambre. Une pulsation complète dure environ
 
 ### Interruption
 
-Toutes les stations de la ligne concernée clignotent en rouge, avec une période
-d’environ 700 ms.
+Toutes les stations de la ligne concernée produisent deux éclats rouges rapides,
+suivis d’une pause. Ce motif dure 2,4 secondes et ne peut pas être confondu avec
+la fermeture d’une seule station.
 
 Les trains théoriques de cette ligne sont retirés immédiatement. Les autres
 lignes continuent leur mouvement.
@@ -481,15 +485,42 @@ lignes continuent leur mouvement.
 ### Fermeture ou problème à une station
 
 Si une alerte de service cible clairement une station, seule cette station
-reçoit l’effet rouge ou ambre correspondant.
+reçoit l’effet correspondant. Une fermeture produit trois petits éclats rouges;
+un ralentissement conserve la respiration ambre.
 
 Les avis concernant uniquement un accès fermé, un arrêt d’autobus déplacé ou
 des travaux sans effet sur le service métro sont ignorés.
 
 ### Erreur de configuration
 
-Si le Wi‑Fi est absent ou contient encore les valeurs d’exemple, les 68 DEL
-deviennent magenta et la DEL intégrée du Pico clignote.
+Si le Wi‑Fi est absent ou contient encore les valeurs d’exemple, trois DEL
+magenta produisent un motif long–court–court. Une erreur fatale utilise plutôt
+le motif magenta–blanc–magenta.
+
+### Langage des états techniques
+
+| État | Animation |
+|---|---|
+| Mise sous tension | Point blanc parcourant les 68 DEL |
+| Vérification des lignes | Verte, orange, jaune et bleue successivement |
+| Connexion Wi‑Fi | Chenillard cyan; sa direction change au réseau suivant |
+| Wi‑Fi connecté | Deux impulsions cyan |
+| Synchronisation de l’heure | Quatre repères blancs en mouvement |
+| Chargement de l’horaire | Les quatre lignes apparaissent successivement |
+| Système prêt | Révélation colorée de toute la carte, puis affichage des trains |
+| Wi‑Fi perdu | Court chenillard cyan toutes les 10 secondes; les trains continuent |
+| API STM inaccessible trois fois | Deux repères cyan toutes les 30 secondes |
+| Horaire GTFS expiré | Double balayage ambre toutes les 30 secondes |
+| Mise à jour GTFS | Progression cyan le long de la chaîne |
+| Mise à jour réussie | Ouverture blanche depuis le centre, puis redémarrage |
+| Échec de mise à jour | Double signal magenta et ambre; l’ancien horaire demeure |
+| Protection électrique | Trois signaux ambre; le limiteur reste prioritaire |
+| Reprise du service | Balayage unique dans la couleur de la ligne rétablie |
+
+Les interruptions STM ont priorité sur les ralentissements, qui ont priorité
+sur les avis techniques. Un avertissement Wi‑Fi ou GTFS ne peut donc jamais
+recouvrir une ligne interrompue. Les avis techniques sont supprimés pendant le
+mode nuit, sauf l’erreur critique qui empêche le programme de démarrer.
 
 ### DEL intégrée du Pico
 
@@ -569,7 +600,11 @@ et ne commande aucun matériel.
 | Interruption orange | Vérifie que l’orange s’arrête pendant que les autres lignes continuent |
 | Ralentissement orange | Test de la pulsation ambre |
 | Berri-UQAM fermée | Test d’une perturbation limitée à une station |
+| Reprise de la ligne orange | Test du balayage de retour au service |
 | Test séquentiel | Allume les 68 DEL virtuelles une à une |
+
+Le menu contient aussi tous les états de mise en marche, de connexion, de mise
+à jour et d’erreur. Ils reproduisent le même vocabulaire visuel que le Pico.
 
 Dans le mode direct :
 

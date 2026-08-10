@@ -63,6 +63,16 @@ def limit_frame(colors):
     ]
 
 
+def frame_requires_limiting(colors):
+    """Indique si l'image demandée dépasserait un plafond de sécurité."""
+    if not isinstance(colors, (tuple, list)) or len(colors) != NUMBER_OF_LEDS:
+        return True
+    clamped = [_clamp_color(color) for color in colors]
+    if any(tuple(color) != clamped[index] for index, color in enumerate(colors)):
+        return True
+    return estimate_frame_current_ma(clamped) > LED_CURRENT_LIMIT_MA
+
+
 def write_limited(pixels, colors):
     """Seul point d'écriture normal vers le tampon NeoPixel."""
     limited = limit_frame(colors)

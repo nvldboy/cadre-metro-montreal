@@ -102,6 +102,35 @@ class WifiManagerTests(unittest.TestCase):
         self.assertIs(result, wlan)
         self.assertEqual(attempts, ["Téléphone"])
 
+    def test_connect_any_forwards_animation_progress(self):
+        wlan = FakeWlan(visible=("Maison",))
+        events = []
+        original_wlan = wifi_manager.network.WLAN
+        original_connect = wifi_manager.connect
+        wifi_manager.network.WLAN = lambda interface: wlan
+
+        def fake_connect(
+            ssid,
+            password,
+            wlan=None,
+            progress_callback=None,
+            attempt=0,
+        ):
+            progress_callback("wifi_connecting", 400, attempt)
+            return wlan
+
+        wifi_manager.connect = fake_connect
+        try:
+            wifi_manager.connect_any(
+                [("Maison", "secret")],
+                progress_callback=lambda *event: events.append(event),
+            )
+        finally:
+            wifi_manager.network.WLAN = original_wlan
+            wifi_manager.connect = original_connect
+
+        self.assertEqual(events, [("wifi_connecting", 400, 0)])
+
 
 if __name__ == "__main__":
     unittest.main()

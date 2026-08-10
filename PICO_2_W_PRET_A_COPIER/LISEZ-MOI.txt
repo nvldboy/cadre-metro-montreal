@@ -104,10 +104,15 @@ SIGNIFICATION DES ANIMATIONS
   nettement à la station suivante au milieu du temps de parcours prévu.
 - Ralentissement : la ligne concernée pulse selon l'état de service STM.
 - Interruption : les trains de cette ligne s'arrêtent et ses stations
-  clignotent en rouge.
+  produisent deux éclats rouges rapides suivis d'une pause.
+- Station fermée : la DEL concernée produit trois éclats rouges rapides.
+- Connexion Wi-Fi : un chenillard cyan se déplace; sa direction change quand
+  le Pico essaie le réseau suivant.
+- Configuration invalide : trois DEL magenta répètent long-court-court.
+- Reprise du service : un point balaie une fois la ligne dans sa couleur.
 - Nuit : après le dernier train réellement prévu, toute la carte respire
-  très lentement à faible luminosité; elle revient au mode normal au
-  premier départ prévu.
+  très lentement entre environ 0,2 % et 0,9 %; elle revient au mode normal
+  au premier départ prévu.
 - DEL intégrée du Pico allumée : dernière lecture STM réussie.
 - DEL intégrée du Pico éteinte : lecture STM impossible; le dernier état
   valide reste affiché. Le Pico réessaie après 15 secondes et accepte jusqu'à
@@ -121,7 +126,7 @@ SÉCURITÉ LOGICIELLE DÉJÀ ACTIVE
 - Luminosité normale limitée à 20 %.
 - Chaque canal RGB est plafonné à 64 sur 255.
 - Budget estimé de la chaîne limité à environ 1 000 mA.
-- Mode nuit limité à environ 0,6 % à 3 % de luminosité réelle.
+- Mode nuit limité à environ 0,2 % à 0,9 % de luminosité réelle.
 
 Le limiteur logiciel réduit fortement la charge, mais il ne remplace pas un
 branchement correct. Coupe toujours l'alimentation avant de modifier les fils.

@@ -95,13 +95,25 @@
         drop-shadow(0 0 5px currentColor);
     }
     .led.slow { animation: pulse 1.8s ease-in-out infinite; }
-    .led.stopped {
+    .led.stopped-line {
       fill: var(--red) !important;
       color: var(--red) !important;
-      animation: blink .7s steps(1) infinite;
+      animation: double-flash 2.4s steps(1) infinite;
+    }
+    .led.stopped-station {
+      fill: var(--red) !important;
+      color: var(--red) !important;
+      animation: triple-flash 2s steps(1) infinite;
     }
     @keyframes pulse { 50% { opacity: .28; } }
-    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes double-flash {
+      0%, 7.4%, 15%, 22.4% { opacity: 1; }
+      7.5%, 14.9%, 22.5%, 100% { opacity: 0; }
+    }
+    @keyframes triple-flash {
+      0%, 6.9%, 14%, 20.9%, 28%, 34.9% { opacity: 1; }
+      7%, 13.9%, 21%, 27.9%, 35%, 100% { opacity: 0; }
+    }
     .detail {
       min-height: 1.5em;
       margin: 12px 0 0;
@@ -141,7 +153,29 @@
         <option value="orange-stop">Interruption orange</option>
         <option value="orange-slow">Ralentissement orange</option>
         <option value="berri-stop">Berri-UQAM fermée</option>
+        <option value="orange-recovery">Reprise de la ligne orange</option>
         <option value="test">Test séquentiel</option>
+        <optgroup label="Mise en marche">
+          <option value="boot">Alimentation et autotest</option>
+          <option value="line-test">Vérification des quatre lignes</option>
+          <option value="wifi-connect">Connexion Wi-Fi</option>
+          <option value="wifi-connected">Wi-Fi connecté</option>
+          <option value="clock-sync">Synchronisation de l’heure</option>
+          <option value="schedule-loading">Chargement de l’horaire</option>
+          <option value="ready">Système prêt</option>
+        </optgroup>
+        <optgroup label="Erreurs et maintenance">
+          <option value="config-error">Configuration invalide</option>
+          <option value="wifi-unavailable">Aucun Wi-Fi accessible</option>
+          <option value="wifi-reconnecting">Wi-Fi perdu</option>
+          <option value="gtfs-expired">Horaire GTFS expiré</option>
+          <option value="api-stale">API STM inaccessible</option>
+          <option value="gtfs-updating">Mise à jour GTFS</option>
+          <option value="gtfs-update-success">Mise à jour réussie</option>
+          <option value="gtfs-update-error">Échec de mise à jour</option>
+          <option value="power-limited">Protection électrique active</option>
+          <option value="fatal-error">Erreur fatale</option>
+        </optgroup>
       </select>
       <button id="refresh" type="button">Actualiser</button>
       <a class="button-link" href="/setup-preview" target="_blank"
@@ -175,6 +209,7 @@
   let testTimer;
   let nightAnimationFrame;
   let liveAnimationFrame;
+  let systemAnimationFrame;
 
   function emptyStatus() {
     return {
@@ -254,12 +289,19 @@
   function render(status, trains = null) {
     clearInterval(testTimer);
     cancelAnimationFrame(nightAnimationFrame);
+    cancelAnimationFrame(systemAnimationFrame);
     document.body.classList.remove("night-preview");
     document.querySelectorAll(".led").forEach((circle, index) => {
       const station = layout.stations[index];
       const severity = stationSeverity(station, status);
+      const stationStopped = (status.stations[station.name] || 0) === 2;
+      const lineStopped = station.lines.some(line => status.lines[line] === 2);
       circle.classList.toggle("slow", severity === 1);
-      circle.classList.toggle("stopped", severity === 2);
+      circle.classList.toggle("stopped-line", lineStopped);
+      circle.classList.toggle(
+        "stopped-station",
+        stationStopped && !lineStopped
+      );
       circle.style.fill = severity === 1 ? "#ff8a00" : stationColor(station);
       circle.style.color = circle.style.fill;
       circle.dataset.severity = String(severity);
@@ -327,9 +369,10 @@
       if (document.getElementById("mode").value !== "night") return;
       const phase = 2 * Math.PI * ((now - startedAt) % periodMs) / periodMs;
       const breath = (Math.sin(phase - Math.PI / 2) + 1) / 2;
-      const actualBrightness = 0.006 + 0.024 * breath;
-      // L'opacité est amplifiée pour que 0,6–3 % reste visible sur un écran.
-      const previewOpacity = 0.16 + 0.54 * breath;
+      const actualBrightness = 0.00225 + 0.00675 * breath;
+      // L'opacité reste amplifiée à l'écran, mais reflète le nouveau mode
+      // nocturne beaucoup plus discret du cadre physique.
+      const previewOpacity = 0.04 + 0.24 * breath;
 
       document.querySelectorAll(".led").forEach(circle => {
         if (circle.dataset.severity === "0") {
@@ -344,6 +387,148 @@
     }
 
     nightAnimationFrame = requestAnimationFrame(animate);
+  }
+
+  const systemDescriptions = {
+    boot: "Mise sous tension · un point blanc vérifie les 68 DEL",
+    "line-test": "Vérification successive des quatre lignes",
+    "wifi-connect": "Connexion Wi-Fi · chenillard cyan",
+    "wifi-connected": "Wi-Fi connecté · double impulsion cyan",
+    "clock-sync": "Synchronisation de l’heure · quatre repères blancs",
+    "schedule-loading": "Chargement de l’horaire GTFS",
+    ready: "Système prêt · révélation des quatre lignes",
+    "config-error": "Configuration invalide · motif magenta long-court-court",
+    "wifi-unavailable": "Aucun Wi-Fi accessible · respiration cyan",
+    "wifi-reconnecting": "Wi-Fi perdu · tentative discrète toutes les 10 s",
+    "gtfs-expired": "Horaire expiré · double balayage ambre toutes les 30 s",
+    "api-stale": "API STM inaccessible · double repère cyan",
+    "gtfs-updating": "Téléchargement d’un nouvel horaire",
+    "gtfs-update-success": "Mise à jour réussie · ouverture blanche",
+    "gtfs-update-error": "Échec de mise à jour · magenta et ambre",
+    "power-limited": "Protection électrique active · triple signal ambre",
+    "fatal-error": "Erreur fatale · magenta-blanc-magenta",
+    "orange-recovery": "Reprise du service · balayage orange unique"
+  };
+
+  function runSystemAnimation(state) {
+    render(emptyStatus());
+    cancelAnimationFrame(systemAnimationFrame);
+    const startedAt = performance.now();
+    const colors = {
+      white: "#e8e6dc", cyan: "#00c8ff", magenta: "#e000a0",
+      amber: "#ff8a00"
+    };
+    const circles = [...document.querySelectorAll(".led")];
+    const count = circles.length;
+
+    function animate(now) {
+      if (document.getElementById("mode").value !== state) return;
+      const elapsed = Math.max(0, now - startedAt);
+      const frame = Array(count).fill(null);
+      const put = (index, color, opacity = 1) => {
+        if (index >= 0 && index < count) frame[index] = {color, opacity};
+      };
+      const comet = (position, color, reverse = false) => {
+        let head = ((Math.floor(position) % count) + count) % count;
+        if (reverse) head = count - 1 - head;
+        const direction = reverse ? 1 : -1;
+        put(head, color, 1);
+        put((head + direction + count) % count, color, .38);
+        put((head + 2 * direction + count) % count, color, .14);
+      };
+      const anchors = [0, Math.floor(count / 2), count - 1];
+      const pulse = (period, windows) => {
+        const phase = elapsed % period;
+        return windows.some(([start, end]) => phase >= start && phase < end);
+      };
+
+      if (state === "boot") comet(elapsed / 40, colors.white);
+      else if (state === "wifi-connect") comet(elapsed / 75, colors.cyan);
+      else if (state === "wifi-reconnecting") {
+        if (elapsed % 10000 < 1800) comet((elapsed % 10000) / 70, colors.cyan);
+      } else if (state === "wifi-connected") {
+        if (pulse(1200, [[0, 180], [360, 540]])) {
+          frame.fill({color: colors.cyan, opacity: 1});
+        }
+      } else if (state === "clock-sync") {
+        const head = Math.floor(elapsed / 120) % count;
+        for (let offset = 0; offset < count; offset += Math.floor(count / 4)) {
+          put((head + offset) % count, colors.white);
+        }
+      } else if (state === "line-test" || state === "schedule-loading") {
+        const lines = ["green", "orange", "yellow", "blue"];
+        const line = lines[Math.floor(elapsed / 300) % lines.length];
+        layout.stations.forEach((station, index) => {
+          if (station.lines.includes(line)) put(index, layout.colors[line]);
+        });
+      } else if (state === "ready") {
+        const visible = Math.min(count, Math.floor((elapsed * count) / 1100) + 1);
+        for (let index = 0; index < visible; index++) {
+          put(index, stationColor(layout.stations[index]));
+        }
+      } else if (state === "config-error") {
+        if (pulse(2600, [[0, 520], [800, 970], [1180, 1350]])) {
+          anchors.forEach(index => put(index, colors.magenta));
+        }
+      } else if (state === "wifi-unavailable") {
+        const phase = (elapsed % 2600) / 1300;
+        const triangle = phase <= 1 ? phase : 2 - phase;
+        frame.fill({color: colors.cyan, opacity: .1 + .28 * triangle});
+      } else if (state === "gtfs-expired") {
+        const phase = elapsed % 30000;
+        if (phase < 1400) {
+          const position = phase * count / 1400;
+          comet(position, colors.amber);
+          comet(position + count / 2, colors.amber);
+        }
+      } else if (state === "api-stale") {
+        if (pulse(30000, [[0, 170], [340, 510]])) {
+          put(0, colors.cyan); put(count - 1, colors.cyan);
+        }
+      } else if (state === "gtfs-updating") {
+        const visible = Math.min(count, Math.floor((elapsed % 3000) * count / 3000) + 1);
+        for (let index = 0; index < visible; index++) put(index, colors.cyan, .22);
+        put(visible - 1, colors.cyan);
+      } else if (state === "gtfs-update-success") {
+        const center = Math.floor(count / 2);
+        const distance = Math.min(center, Math.floor(elapsed * center / 1200));
+        put(center - distance, colors.white); put(center + distance, colors.white);
+      } else if (state === "gtfs-update-error") {
+        if (pulse(2400, [[0, 180], [360, 540]])) {
+          put(anchors[0], colors.magenta);
+          put(anchors[1], colors.amber);
+          put(anchors[2], colors.magenta);
+        }
+      } else if (state === "power-limited") {
+        if (pulse(2400, [[0, 150], [300, 450], [600, 750]])) {
+          anchors.forEach(index => put(index, colors.amber));
+        }
+      } else if (state === "fatal-error") {
+        if (pulse(1800, [[0, 500], [760, 1260]])) {
+          put(anchors[0], colors.magenta);
+          put(anchors[1], colors.white);
+          put(anchors[2], colors.magenta);
+        }
+      } else if (state === "orange-recovery") {
+        const indexes = layout.stations
+          .map((station, index) => station.lines.includes("orange") ? index : -1)
+          .filter(index => index >= 0);
+        const position = Math.floor((elapsed % 1600) * indexes.length / 1600);
+        put(indexes[Math.min(position, indexes.length - 1)], layout.colors.orange);
+      }
+
+      circles.forEach((circle, index) => {
+        circle.classList.remove("train", "slow", "stopped-line", "stopped-station");
+        const value = frame[index];
+        circle.style.fill = value?.color || stationColor(layout.stations[index]);
+        circle.style.color = circle.style.fill;
+        circle.style.opacity = value ? String(value.opacity) : "0";
+      });
+      document.getElementById("meta").textContent = systemDescriptions[state];
+      systemAnimationFrame = requestAnimationFrame(animate);
+    }
+
+    systemAnimationFrame = requestAnimationFrame(animate);
   }
 
   function demoStatus(mode) {
@@ -429,13 +614,15 @@
       render(emptyStatus());
       runNightAnimation();
       document.getElementById("detail").textContent =
-        "La carte respire entre 0,6 % et 3 % après le dernier train.";
+        "La carte respire entre environ 0,2 % et 0,9 % après le dernier train.";
     }
     else if (event.target.value === "test") {
       render(emptyStatus());
       runSequence();
     } else if (event.target.value === "normal") {
       render(demoStatus(event.target.value));
+    } else if (systemDescriptions[event.target.value]) {
+      runSystemAnimation(event.target.value);
     } else {
       render(demoStatus(event.target.value), liveTrains);
     }

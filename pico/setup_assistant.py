@@ -1,6 +1,7 @@
 """Portail Web local pour associer les 68 DEL physiques aux stations."""
 
 import json
+import time
 from machine import Pin, reset
 from neopixel import NeoPixel
 import network
@@ -18,6 +19,7 @@ from config import (
     SETUP_AP_PASSWORD,
     SETUP_AP_SSID,
     SETUP_BLINK_PERIOD_MS,
+    STATUS_BRIGHTNESS,
 )
 from led_mapping import (
     load_draft,
@@ -27,10 +29,16 @@ from led_mapping import (
     validate_physical_to_logical,
 )
 from power_safety import write_limited
+from stations import LINE_COLORS, STATION_LINES, STATION_ORDER
+from status_animation import SETUP_PORTAL, state_frame
 
 OFF = (0, 0, 0)
 IDENTIFY_COLOR = (36, 36, 32)
 SUCCESS_COLOR = (0, 28, 8)
+
+
+def _scaled(color, factor=STATUS_BRIGHTNESS):
+    return tuple(int(channel * factor + 0.5) for channel in color)
 
 
 class PixelIdentifier:
@@ -43,17 +51,34 @@ class PixelIdentifier:
         self.index = 0
         self.phase = False
         self.completed = False
+        self.portal_started_ms = time.ticks_ms()
+        self.confirmed_index = None
+        self.confirmed_started_ms = 0
         write_limited(self.pixels, [OFF] * NUMBER_OF_LEDS)
 
     def select(self, physical_index):
         self.index = physical_index
         self.phase = True
 
-    def show_success(self):
+    def confirm(self, physical_index):
+        self.confirmed_index = physical_index
+        self.confirmed_started_ms = time.ticks_ms()
+
+    def show_success(self, physical_to_logical):
         self.completed = True
+        frame = [OFF] * NUMBER_OF_LEDS
+        for physical_index, logical_index in enumerate(physical_to_logical):
+            station_name = STATION_ORDER[logical_index]
+            lines = STATION_LINES[station_name]
+            color = (
+                (180, 180, 165)
+                if len(lines) > 1
+                else LINE_COLORS[lines[0]]
+            )
+            frame[physical_index] = _scaled(color)
         write_limited(
             self.pixels,
-            [SUCCESS_COLOR] * NUMBER_OF_LEDS,
+            frame,
         )
 
     async def blink_loop(self):
@@ -62,6 +87,33 @@ class PixelIdentifier:
             if self.completed:
                 await asyncio.sleep_ms(half_period)
                 continue
+            now_ms = time.ticks_ms()
+            portal_elapsed = time.ticks_diff(now_ms, self.portal_started_ms)
+            if portal_elapsed < 1800:
+                frame = state_frame(
+                    SETUP_PORTAL,
+                    portal_elapsed,
+                    NUMBER_OF_LEDS,
+                )
+                write_limited(
+                    self.pixels,
+                    [_scaled(color) for color in frame],
+                )
+                await asyncio.sleep_ms(60)
+                continue
+            if self.confirmed_index is not None:
+                confirmed_elapsed = time.ticks_diff(
+                    now_ms,
+                    self.confirmed_started_ms,
+                )
+                if confirmed_elapsed < 650:
+                    frame = [OFF] * NUMBER_OF_LEDS
+                    if (confirmed_elapsed % 300) < 130:
+                        frame[self.confirmed_index] = SUCCESS_COLOR
+                    write_limited(self.pixels, frame)
+                    await asyncio.sleep_ms(60)
+                    continue
+                self.confirmed_index = None
             frame = [OFF] * NUMBER_OF_LEDS
             if self.phase:
                 frame[self.index] = IDENTIFY_COLOR
@@ -141,6 +193,7 @@ class SetupAssistant:
 
         self.assignments[physical_index] = logical_index
         save_draft(self.assignments)
+        self.identifier.confirm(physical_index)
         self.current = self._next_unassigned(physical_index)
         self.identifier.select(self.current)
         return self._state()
@@ -155,7 +208,7 @@ class SetupAssistant:
             )
         save_led_mapping(self.assignments)
         remove_draft()
-        self.identifier.show_success()
+        self.identifier.show_success(self.assignments)
         asyncio.create_task(self._restart_after_delay())
         state = self._state()
         state["restarting"] = True
