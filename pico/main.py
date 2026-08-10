@@ -2,7 +2,9 @@
 
 import json
 import gc
+import os
 import time
+import network
 from machine import Pin, reset
 
 try:
@@ -11,6 +13,7 @@ except ImportError:
     import asyncio
 
 from async_stm_api import fetch_service_status_async, prepare_stm_endpoint
+from control_panel import ControlPanel
 from config import (
     ANIMATION_FRAME_MS,
     API_STALE_FAILURE_COUNT,
@@ -31,7 +34,8 @@ from gtfs_updater import (
 )
 from led_mapping import load_led_mapping
 from led_display import MetroDisplay
-from night_mode import anchored_clock_parts, is_night
+from night_mode import anchored_clock_parts, resolve_night_mode
+from runtime_settings import get_settings, load_settings, save_settings
 from stm_status import NORMAL, SLOW, STOPPED, empty_status, parse_service_status
 from status_animation import (
     BOOT,
@@ -70,6 +74,11 @@ try:
 except ImportError:
     WIFI_NETWORKS = ()
 
+try:
+    from secrets import CONTROL_PANEL_PIN
+except ImportError:
+    CONTROL_PANEL_PIN = "metro68"
+
 STATE_NAMES = {
     NORMAL: "ok",
     SLOW: "slow",
@@ -100,6 +109,13 @@ last_render_snapshot = {
     "trains": 0,
     "active": (),
 }
+last_feed_current = True
+program_started_epoch = 0
+api_refresh_requested = False
+gtfs_refresh_requested = False
+wifi_reconnect_requested = False
+control_preview_day_until_ms = 0
+control_preview_night_until_ms = 0
 
 
 def _load_stations_map():
@@ -124,13 +140,129 @@ def _configured_networks():
 
 
 def _anchor_clock():
-    global clock_anchor_epoch, clock_anchor_ticks
+    global clock_anchor_epoch, clock_anchor_ticks, program_started_epoch
     clock_anchor_epoch = int(time.time())
     clock_anchor_ticks = time.ticks_ms()
+    if not program_started_epoch:
+        program_started_epoch = clock_anchor_epoch
 
 
 def _configured():
     return bool(_configured_networks())
+
+
+def _ticks_active(until_ms, now_ms):
+    return bool(until_ms) and time.ticks_diff(until_ms, now_ms) > 0
+
+
+def _format_local_time(parts):
+    if not parts or len(parts) < 6:
+        return "—"
+    return "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(
+        parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
+    )
+
+
+def _control_state():
+    wlan = network.WLAN(network.STA_IF)
+    ip_address = ""
+    ssid = ""
+    if wlan.isconnected():
+        try:
+            ip_address = wlan.ifconfig()[0]
+        except Exception:
+            pass
+        try:
+            ssid = wlan.config("essid")
+        except Exception:
+            pass
+    settings = dict(get_settings())
+    local_parts = last_render_snapshot.get("local_parts", ())
+    uptime = 0
+    if program_started_epoch:
+        uptime = max(0, int(time.time()) - program_started_epoch)
+    return {
+        "ok": True,
+        "wifi": {
+            "connected": bool(wlan.isconnected()),
+            "ssid": ssid,
+            "ip": ip_address,
+        },
+        "local_time": _format_local_time(local_parts),
+        "trains": last_render_snapshot.get("trains", 0),
+        "active_stations": len(last_render_snapshot.get("active", ())),
+        "lines": dict(system_status),
+        "api_failures": api_failure_count,
+        "gtfs_current": bool(last_feed_current),
+        "memory_free": gc.mem_free(),
+        "uptime_seconds": uptime,
+        "night_active": bool(last_render_snapshot.get("night_mode", False)),
+        "settings": settings,
+    }
+
+
+async def _reset_after_delay(delay_ms=900):
+    await asyncio.sleep_ms(delay_ms)
+    reset()
+
+
+async def _disconnect_after_delay(delay_ms=900):
+    await asyncio.sleep_ms(delay_ms)
+    try:
+        network.WLAN(network.STA_IF).disconnect()
+    except Exception:
+        pass
+
+
+def _control_action(action, payload):
+    global api_refresh_requested, gtfs_refresh_requested
+    global wifi_reconnect_requested, control_preview_day_until_ms
+    global control_preview_night_until_ms
+
+    now_ms = time.ticks_ms()
+    if action == "test_pixels":
+        control_preview_day_until_ms = time.ticks_add(now_ms, 5000)
+        _set_runtime_notice(BOOT, 5000)
+        return {"message": "Test des 68 DEL lancé"}
+    if action == "test_lines":
+        control_preview_day_until_ms = time.ticks_add(now_ms, 5000)
+        _set_runtime_notice(LINE_TEST, 5000)
+        return {"message": "Test des lignes lancé"}
+    if action == "test_all":
+        control_preview_day_until_ms = time.ticks_add(now_ms, 5000)
+        _set_runtime_notice(READY, 5000)
+        return {"message": "Carte complète allumée pendant 5 secondes"}
+    if action == "preview_night":
+        control_preview_night_until_ms = time.ticks_add(now_ms, 20000)
+        return {"message": "Aperçu nocturne lancé pendant 20 secondes"}
+    if action == "refresh_stm":
+        api_refresh_requested = True
+        return {"message": "Actualisation STM demandée"}
+    if action == "refresh_gtfs":
+        gtfs_refresh_requested = True
+        return {"message": "Vérification GTFS demandée"}
+    if action == "reconnect_wifi":
+        wifi_reconnect_requested = True
+        _set_runtime_notice(WIFI_RECONNECTING)
+        asyncio.create_task(_disconnect_after_delay())
+        return {"message": "Reconnexion Wi-Fi demandée"}
+    if action == "restart":
+        asyncio.create_task(_reset_after_delay())
+        return {"message": "Redémarrage en cours"}
+    if action == "reset_mapping":
+        if payload.get("confirm") is not True:
+            raise ValueError("Confirmation requise")
+        try:
+            os.remove("led_mapping.json")
+        except OSError:
+            pass
+        try:
+            os.remove("led_mapping.draft.json")
+        except OSError:
+            pass
+        asyncio.create_task(_reset_after_delay())
+        return {"message": "Association effacée; redémarrage en cours"}
+    raise ValueError("Commande inconnue")
 
 
 def _set_runtime_notice(state, duration_ms=0):
@@ -178,10 +310,12 @@ def _wifi_progress_renderer(display):
 
 async def wifi_monitor_loop(networks, onboard):
     """Rétablit Internet automatiquement sans arrêter l'animation."""
-    global stm_endpoint
+    global stm_endpoint, wifi_reconnect_requested
     while True:
         await asyncio.sleep(WIFI_RECONNECT_INTERVAL_SECONDS)
-        if is_connected():
+        requested = wifi_reconnect_requested
+        wifi_reconnect_requested = False
+        if is_connected() and not requested:
             continue
 
         onboard.value(0)
@@ -220,6 +354,7 @@ def _publish_service_status(parsed):
 async def animate_loop(display):
     """Anime les trains à 25 Hz et applique immédiatement les interruptions."""
     global last_render_snapshot, recovery_lines, fatal_animation_state
+    global last_feed_current
     # L'horaire compact est volumineux. Il n'est chargé qu'après l'assistant
     # de configuration afin de garder le maximum de mémoire disponible.
     try:
@@ -258,12 +393,33 @@ async def animate_loop(display):
             running_positions,
             animation_seconds=fractional_second,
         )
+        now_ms = time.ticks_ms()
+        # Utiliser les positions avant le filtrage des interruptions : une
+        # panne générale du réseau ne doit pas être confondue avec la fermeture
+        # planifiée du métro.
+        settings = get_settings()
+        display_mode = settings["display_mode"]
+        night_mode = resolve_night_mode(
+            local_parts,
+            trains_running=bool(positions),
+            display_mode=display_mode,
+        )
+        preview_day = _ticks_active(control_preview_day_until_ms, now_ms)
+        preview_night = _ticks_active(control_preview_night_until_ms, now_ms)
+        if preview_day:
+            night_mode = False
+        elif preview_night:
+            night_mode = True
+        display_off = display_mode == "off" and not preview_day and not preview_night
+        feed_current = feed_is_current(local_parts)
+        last_feed_current = feed_current
         snapshot_second = epoch_seconds
         if snapshot_second != last_snapshot_second:
             last_snapshot_second = snapshot_second
             last_render_snapshot = {
                 "epoch": epoch_seconds,
                 "millisecond": fractional_ms,
+                "local_parts": tuple(local_parts),
                 "trains": sum(line_counts),
                 "active": tuple(
                     (
@@ -274,13 +430,8 @@ async def animate_loop(display):
                     for logical_index, level in enumerate(levels)
                     if level > 0.02
                 ),
+                "night_mode": night_mode,
             }
-        now_ms = time.ticks_ms()
-        # Utiliser les positions avant le filtrage des interruptions : une
-        # panne générale du réseau ne doit pas être confondue avec la fermeture
-        # planifiée du métro.
-        night_mode = is_night(local_parts, trains_running=bool(positions))
-        feed_current = feed_is_current(local_parts)
         notice_state = _active_runtime_notice(now_ms)
         technical_state = select_runtime_state(
             is_connected(),
@@ -307,6 +458,7 @@ async def animate_loop(display):
             technical_started_ms=technical_started_ms,
             recovery_lines=recovery_lines,
             recovery_started_ms=recovery_started_ms,
+            display_off=display_off,
         )
 
         if night_mode != last_night_mode:
@@ -329,7 +481,7 @@ async def animate_loop(display):
 
 async def api_monitor_loop(onboard):
     """Surveille l'état du réseau toutes les 60 secondes sans bloquer l'animation."""
-    global stm_endpoint, api_failure_count
+    global stm_endpoint, api_failure_count, api_refresh_requested
     while True:
         started_ms = time.ticks_ms()
         next_delay = API_MONITOR_INTERVAL_SECONDS
@@ -398,15 +550,27 @@ async def api_monitor_loop(onboard):
             onboard.value(1)
             print("Alertes STM désactivées: aucune clé API.")
 
-        await asyncio.sleep(next_delay)
+        waited = 0
+        while waited < next_delay and not api_refresh_requested:
+            await asyncio.sleep(1)
+            waited += 1
+        api_refresh_requested = False
 
 
 async def gtfs_update_loop(display):
     """Vérifie chaque jour si un nouvel horaire compact est publié."""
+    global gtfs_refresh_requested
     from metro_schedule_data import FEED, GENERATED_AT
     from gtfs_updater import check_and_install_update
 
-    await asyncio.sleep(GTFS_UPDATE_STARTUP_DELAY_SECONDS)
+    waited = 0
+    while (
+        waited < GTFS_UPDATE_STARTUP_DELAY_SECONDS
+        and not gtfs_refresh_requested
+    ):
+        await asyncio.sleep(1)
+        waited += 1
+    gtfs_refresh_requested = False
     while True:
         if is_connected():
             try:
@@ -429,14 +593,28 @@ async def gtfs_update_loop(display):
             except Exception as error:
                 print("Mise à jour GTFS ignorée:", error)
                 _set_runtime_notice(GTFS_UPDATE_ERROR, 5000)
-        await asyncio.sleep(GTFS_UPDATE_CHECK_INTERVAL_SECONDS)
+        waited = 0
+        while (
+            waited < GTFS_UPDATE_CHECK_INTERVAL_SECONDS
+            and not gtfs_refresh_requested
+        ):
+            await asyncio.sleep(1)
+            waited += 1
+        gtfs_refresh_requested = False
 
 
 async def main_async(display, onboard, networks):
+    control_panel = ControlPanel(
+        CONTROL_PANEL_PIN,
+        _control_state,
+        save_settings,
+        _control_action,
+    )
     tasks = [
         animate_loop(display),
         api_monitor_loop(onboard),
         wifi_monitor_loop(networks, onboard),
+        control_panel.run(),
     ]
     if GTFS_AUTO_UPDATE_ENABLED and GTFS_UPDATE_MANIFEST_URL:
         tasks.append(gtfs_update_loop(display))
@@ -459,6 +637,7 @@ def run():
         run_setup_assistant(stations_map)
         return
 
+    load_settings()
     display = MetroDisplay(stations_map, led_mapping)
     gc.collect()
     display.play_system_animation(
@@ -506,6 +685,11 @@ def run():
     display.play_system_animation(SCHEDULE_LOADING, 1200)
     display.play_system_animation(READY, 1300)
     print("Horloge NTP synchronisée; démarrage des tâches.")
+    try:
+        control_ip = network.WLAN(network.STA_IF).ifconfig()[0]
+        print("Panneau de contrôle: http://{}/admin".format(control_ip))
+    except Exception:
+        print("Panneau de contrôle disponible sur l'adresse IP du Pico.")
 
     try:
         asyncio.run(main_async(display, onboard, networks))

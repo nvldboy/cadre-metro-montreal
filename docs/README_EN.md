@@ -27,7 +27,7 @@ small setup page that is loaded only during the initial LED mapping.
 1. Install [MicroPython for Pico 2 W](https://micropython.org/download/RPI_PICO2_W/).
 2. Open Thonny and select **MicroPython (Raspberry Pi Pico)**.
 3. Copy `pico/secrets.example.py` to `pico/secrets.py`.
-4. Add your 2.4 GHz Wi-Fi credentials and STM API key.
+4. Add your 2.4 GHz Wi-Fi credentials, STM API key and `CONTROL_PANEL_PIN`.
 5. Copy every file from [`pico/`](../pico) to the Pico root directory `/`.
 6. Restart the Pico.
 7. Join `Metro-Setup` with password `metro-led-68`.
@@ -35,6 +35,17 @@ small setup page that is loaded only during the initial LED mapping.
    to the station in front of it.
 
 The physical LED chain does not need to follow the geographic station order.
+
+## Local control panel
+
+After normal startup, open `http://PICO_IP_ADDRESS/admin` from the same Wi-Fi
+network. The address is printed in Thonny. Sign in with `CONTROL_PANEL_PIN`;
+if it is absent, the initial PIN is `metro68`.
+
+The four-language panel changes brightness and night hours, forces automatic,
+day, night or off mode, tests the LEDs, refreshes STM and GTFS, reconnects
+Wi-Fi, resets station mapping and restarts the Pico. Settings persist in
+`user_settings.json` while train animation continues independently.
 
 ## Try it without hardware
 

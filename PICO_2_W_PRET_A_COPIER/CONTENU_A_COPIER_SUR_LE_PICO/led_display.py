@@ -7,22 +7,20 @@ from neopixel import NeoPixel
 
 from config import (
     ANIMATION_FRAME_MS,
-    BRIGHTNESS,
     DATA_PIN,
     NIGHT_AMBIENT_ENABLED,
     NIGHT_AMBIENT_MAX_LEVEL,
     NIGHT_AMBIENT_MIN_LEVEL,
     NIGHT_AMBIENT_PERIOD_MS,
-    NIGHT_BRIGHTNESS,
     NUMBER_OF_LEDS,
     PIXEL_TIMING,
     SLOW_PULSE_PERIOD_MS,
-    STATUS_BRIGHTNESS,
     STOP_LINE_PATTERN_PERIOD_MS,
     STOP_STATION_PATTERN_PERIOD_MS,
     TRAIN_BASE_LEVEL,
 )
 from power_safety import frame_requires_limiting, write_limited
+from runtime_settings import get_settings
 from stations import (
     LINE_COLORS,
     STATION_INDEX,
@@ -136,7 +134,8 @@ class MetroDisplay:
             line_groups=self.line_groups,
             line_colors=LINE_COLORS,
         )
-        scaled = [_scaled(color, STATUS_BRIGHTNESS) for color in logical]
+        status_brightness = get_settings()["status_brightness"]
+        scaled = [_scaled(color, status_brightness) for color in logical]
         write_limited(
             self.pixels,
             self._physical_frame(scaled, physical_order=physical_order),
@@ -174,7 +173,10 @@ class MetroDisplay:
                 station_name,
             )
             frame = [OFF] * NUMBER_OF_LEDS
-            frame[physical_index] = _scaled(WHITE, BRIGHTNESS)
+            frame[physical_index] = _scaled(
+                WHITE,
+                get_settings()["day_brightness"],
+            )
             write_limited(self.pixels, frame)
             time.sleep_ms(delay_ms)
         self.clear()
@@ -189,12 +191,22 @@ class MetroDisplay:
         technical_started_ms=0,
         recovery_lines=(),
         recovery_started_ms=0,
+        display_off=False,
     ):
         if now_ms is None:
             now_ms = time.ticks_ms()
         if time.ticks_diff(now_ms, self.last_frame) < ANIMATION_FRAME_MS:
             return
         self.last_frame = now_ms
+
+        if display_off:
+            write_limited(self.pixels, [OFF] * NUMBER_OF_LEDS)
+            return
+
+        settings = get_settings()
+        day_brightness = settings["day_brightness"]
+        night_brightness = settings["night_brightness"]
+        status_brightness = settings["status_brightness"]
 
         slow_phase = (
             0.45
@@ -215,7 +227,7 @@ class MetroDisplay:
             or 280 <= station_stop_phase < 420
             or 560 <= station_stop_phase < 700
         )
-        brightness = NIGHT_BRIGHTNESS if night_mode else BRIGHTNESS
+        brightness = night_brightness if night_mode else day_brightness
         night_ambient_level = 0.0
         if night_mode and NIGHT_AMBIENT_ENABLED:
             phase = (
@@ -286,7 +298,7 @@ class MetroDisplay:
             for logical_index, color in enumerate(technical):
                 if color != OFF and severities[logical_index] == NORMAL:
                     physical_index = self.logical_to_physical[logical_index]
-                    frame[physical_index] = _scaled(color, STATUS_BRIGHTNESS)
+                    frame[physical_index] = _scaled(color, status_brightness)
 
         if not night_mode and recovery_lines:
             recovery = recovery_frame(
@@ -299,7 +311,7 @@ class MetroDisplay:
             for logical_index, color in enumerate(recovery):
                 if color != OFF and severities[logical_index] == NORMAL:
                     physical_index = self.logical_to_physical[logical_index]
-                    frame[physical_index] = _scaled(color, BRIGHTNESS)
+                    frame[physical_index] = _scaled(color, day_brightness)
 
         if not night_mode and frame_requires_limiting(frame):
             warning = state_frame(
@@ -310,6 +322,6 @@ class MetroDisplay:
             for logical_index, color in enumerate(warning):
                 if color != OFF and severities[logical_index] == NORMAL:
                     physical_index = self.logical_to_physical[logical_index]
-                    frame[physical_index] = _scaled(color, STATUS_BRIGHTNESS)
+                    frame[physical_index] = _scaled(color, status_brightness)
 
         write_limited(self.pixels, frame)

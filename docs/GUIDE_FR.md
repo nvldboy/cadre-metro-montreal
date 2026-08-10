@@ -589,6 +589,11 @@ Le bouton **Assistant initial** ouvre une copie interactive de la véritable
 page de première configuration. Cette prévisualisation utilise 68 DEL simulées
 et ne commande aucun matériel.
 
+L’adresse `http://127.0.0.1:8765/admin-preview` ouvre aussi le véritable
+panneau de contrôle avec le NIP `metro68`. Ses réglages restent en mémoire
+jusqu’à l’arrêt du simulateur et ses commandes de redémarrage ou de maintenance
+sont simulées; elles ne touchent jamais le Pico.
+
 ### Modes disponibles
 
 | Mode | Utilité |
@@ -626,9 +631,47 @@ python3 simulator/live_status.py --watch
 
 Arrêter le serveur avec `Ctrl-C`.
 
+## Panneau de contrôle du Pico
+
+Le Pico sert une seconde interface Web pendant son fonctionnement normal. La
+console affiche son adresse après la connexion, par exemple :
+
+```text
+Panneau de contrôle: http://192.168.68.107/admin
+```
+
+Le téléphone ou l’ordinateur doit être connecté au même réseau Wi‑Fi. Le NIP
+provient de `CONTROL_PANEL_PIN` dans `secrets.py`; si la variable est absente,
+le NIP de départ est `metro68`. Il est recommandé de le personnaliser.
+
+Le panneau, disponible en français, anglais, espagnol et italien, permet de :
+
+- voir l’heure montréalaise, le Wi‑Fi, l’adresse IP, les trains, la mémoire,
+  le GTFS, les lignes et les échecs de lecture STM;
+- régler séparément la luminosité de jour, de nuit et des signaux techniques;
+- choisir le mode automatique, jour forcé, nuit forcée ou éteint;
+- changer la fenêtre nocturne;
+- lancer un test des 68 DEL, des quatre lignes ou de la carte entière;
+- demander une lecture STM ou une vérification GTFS immédiate;
+- reconnecter le Wi‑Fi ou redémarrer le Pico;
+- effacer l’association des stations après une confirmation explicite.
+
+Les réglages validés sont écrits dans `user_settings.json`. Les plafonds de
+sécurité demeurent prioritaires : le panneau ne peut pas dépasser 20 % le jour,
+1,2 % au sommet de la respiration nocturne ni 15 % pour les signaux. La page
+`admin.html` est lue par petits morceaux seulement lorsqu’un navigateur la
+demande; elle ne demeure pas en mémoire et l’animation à 25 images/seconde
+continue dans sa tâche indépendante.
+
+Le panneau est volontairement limité au réseau local et utilise HTTP. Il ne
+doit pas être exposé directement sur Internet. Si le Pico n’a plus de Wi‑Fi ou
+de courant, il faut intervenir localement.
+
 ## Réglages principaux
 
-Les paramètres se trouvent dans [`pico/config.py`](../pico/config.py).
+Les valeurs de départ se trouvent dans [`pico/config.py`](../pico/config.py).
+Les changements effectués dans le panneau sont conservés séparément dans
+`user_settings.json` et ont priorité au prochain démarrage.
 
 ```python
 DATA_PIN = 0
@@ -755,6 +798,8 @@ Les tests vérifient notamment :
 | Une station incorrecte s’allume | Supprimer `led_mapping.json`, redémarrer et refaire l’association de la chaîne |
 | Toutes les DEL sont magenta | Compléter le Wi‑Fi dans `secrets.py` |
 | Le Pico reste avant l’animation | Vérifier le Wi‑Fi 2,4 GHz, Internet et la synchronisation NTP |
+| Le panneau ne s’ouvre pas | Vérifier l’adresse IP imprimée dans Thonny et que le téléphone est sur le même Wi‑Fi; ouvrir `/admin` |
+| Le NIP du panneau est refusé | Vérifier `CONTROL_PANEL_PIN` dans `secrets.py`; sans cette variable, utiliser `metro68` |
 | Les trains sont visibles, mais pas les alertes STM | Vérifier la clé publique, l’API ajoutée à l’application et l’état publié de la clé |
 | L’API répond `Invalid API Key` | Utiliser `API Key`, pas le secret partagé, puis enregistrer et publier la clé |
 | Aucune position de train n’apparaît | Vérifier l’heure, la période GTFS et si le métro est normalement en service |
@@ -772,6 +817,10 @@ Les tests vérifient notamment :
 | `pico/power_safety.py` | Plafond RGB et limiteur global de courant |
 | `pico/setup_assistant.py` | Point d’accès et serveur Web de première configuration |
 | `pico/setup.html` | Interface mobile de l’assistant |
+| `pico/control_panel.py` | Serveur Web local protégé par NIP |
+| `pico/admin.html` | Panneau de contrôle en quatre langues |
+| `pico/runtime_settings.py` | Validation et sauvegarde des réglages Web |
+| `user_settings.json` sur le Pico | Préférences persistantes du panneau |
 | `pico/train_schedule.py` | Calcul et interpolation des trains |
 | `pico/metro_schedule_data.py` | Horaire GTFS compact |
 | `pico/stations.py` | Noms, couleurs et index logiques |

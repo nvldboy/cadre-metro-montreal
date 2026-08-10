@@ -27,7 +27,7 @@ una sola página ligera que únicamente se carga durante la asociación inicial.
 1. Instala [MicroPython para Pico 2 W](https://micropython.org/download/RPI_PICO2_W/).
 2. Abre Thonny y selecciona **MicroPython (Raspberry Pi Pico)**.
 3. Copia `pico/secrets.example.py` como `pico/secrets.py`.
-4. Añade los datos de tu Wi-Fi de 2,4 GHz y la clave de la API STM.
+4. Añade los datos de tu Wi-Fi de 2,4 GHz, la clave API STM y `CONTROL_PANEL_PIN`.
 5. Copia todos los archivos de [`pico/`](../pico) en la raíz `/` del Pico.
 6. Reinicia el Pico.
 7. Conéctate a `Metro-Setup` con la contraseña `metro-led-68`.
@@ -35,6 +35,17 @@ una sola página ligera que únicamente se carga durante la asociación inicial.
    con la estación situada delante.
 
 La cadena física de LED no tiene que seguir el orden geográfico de las estaciones.
+
+## Panel de control local
+
+Después del arranque normal, abre `http://DIRECCION_IP_DEL_PICO/admin` desde la
+misma red Wi‑Fi. Thonny muestra la dirección. Usa `CONTROL_PANEL_PIN`; si no
+existe, el PIN inicial es `metro68`.
+
+El panel en cuatro idiomas ajusta el brillo y el horario nocturno, fuerza los
+modos automático, día, noche o apagado, prueba los LED, actualiza STM y GTFS,
+reconecta el Wi‑Fi, reinicia la asociación de estaciones y reinicia el Pico.
+Los ajustes se guardan en `user_settings.json` sin detener los trenes.
 
 ## Probar sin equipo
 

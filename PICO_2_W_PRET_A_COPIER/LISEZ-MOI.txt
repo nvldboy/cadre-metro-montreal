@@ -96,6 +96,23 @@ Le Pico crée alors led_mapping.json, redémarre, rejoint ton Wi-Fi,
 synchronise son horloge par NTP, démarre la simulation des trains et
 vérifie l'état du réseau STM toutes les 60 secondes.
 
+PANNEAU DE CONTRÔLE LOCAL
+-------------------------
+
+Après le démarrage normal, la console affiche une adresse comme :
+
+http://192.168.x.x/admin
+
+Ouvre-la sur un téléphone ou un ordinateur connecté au même Wi-Fi. Le NIP est
+CONTROL_PANEL_PIN dans secrets.py. Si cette ligne est absente, le NIP initial
+est metro68.
+
+Le panneau permet de régler les luminosités, choisir automatique, jour, nuit
+ou éteint, tester les DEL, relire la STM, vérifier le GTFS, reconnecter le
+Wi-Fi, réinitialiser les stations et redémarrer le Pico. Les réglages sont
+enregistrés dans user_settings.json. Le français, l'anglais, l'espagnol et
+l'italien sont offerts automatiquement.
+
 SIGNIFICATION DES ANIMATIONS
 ----------------------------
 
@@ -139,7 +156,8 @@ EN CAS DE PROBLÈME
 - Le Pico clignote sans démarrer après l'association :
   vérifie NOM_DU_WIFI et MOT_DE_PASSE_WIFI dans secrets.py.
 - Refaire l'association des DEL :
-  supprime led_mapping.json du Pico avec Thonny et redémarre.
+  utilise le bouton de réinitialisation du panneau, ou supprime
+  led_mapping.json du Pico avec Thonny et redémarre.
 - Voir le diagnostic :
   branche le Pico à Thonny et ouvre la console « Shell ».
 

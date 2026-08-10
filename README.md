@@ -55,6 +55,7 @@ cadre doit associer ses DEL aux stations.
 | État du réseau | Ralentissements et interruptions lus toutes les 60 secondes |
 | Mode nuit | Respiration lente et douce après le dernier passage prévu |
 | Première installation | Assistant Web qui identifie chaque DEL sans imposer l’ordre du câblage |
+| Panneau de contrôle | Réglages, diagnostics, tests et redémarrage depuis le réseau local |
 | Protection | Luminosité et courant estimé plafonnés par logiciel |
 | Mise à jour GTFS | Téléchargement validé par SHA-256 avec sauvegarde et restauration |
 | Simulation | Même animation visible localement dans un navigateur avant le branchement |
@@ -77,6 +78,7 @@ WIFI_NETWORKS = [
 ]
 
 STM_API_KEY = "CLE_API_STM"
+CONTROL_PANEL_PIN = "CHOISIR_UN_NIP"
 ```
 
 `secrets.py` est ignoré par Git : il ne sera jamais publié par erreur.
@@ -101,7 +103,20 @@ Au premier démarrage :
 L’ordre physique des DEL n’a donc pas besoin de suivre l’ordre géographique des
 stations.
 
-### 5. Tester sans matériel
+### 5. Ouvrir le panneau de contrôle
+
+Lorsque les trains fonctionnent, ouvre `http://ADRESSE_IP_DU_PICO/admin` sur un
+appareil connecté au même Wi‑Fi. Le Pico imprime son adresse dans Thonny au
+démarrage. Entre le `CONTROL_PANEL_PIN` défini dans `secrets.py`; si cette ligne
+est absente, le NIP initial est `metro68`.
+
+Le panneau permet de régler les luminosités, forcer le jour, la nuit ou
+l’extinction, tester les DEL, relire la STM, vérifier le GTFS, reconnecter le
+Wi‑Fi, réinitialiser les stations et redémarrer le Pico. Les réglages sont
+conservés dans `user_settings.json` et l’animation continue pendant son
+utilisation.
+
+### 6. Tester sans matériel
 
 ```bash
 python3 simulator/server.py
@@ -111,6 +126,8 @@ Ouvre ensuite :
 
 - simulateur : `http://127.0.0.1:8765/`;
 - assistant initial : `http://127.0.0.1:8765/setup-preview`;
+- panneau de contrôle : `http://127.0.0.1:8765/admin-preview` avec le NIP
+  `metro68`;
 - aperçu espagnol direct : `http://127.0.0.1:8765/setup-preview?lang=es`.
 
 ## Signification des animations
