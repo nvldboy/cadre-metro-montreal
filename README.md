@@ -118,7 +118,7 @@ Ouvre ensuite :
 | Animation | Signification |
 |---|---|
 | Une station vivement colorée | Présence estimée d’un train |
-| Le point saute à la station voisine | Le train franchit la moitié du segment prévu |
+| Point qui saute à la station suivante | Déplacement estimé d’un train, représenté par une seule DEL nette |
 | Changements répartis sur le réseau | Chaque rame suit son propre horaire légèrement désynchronisé |
 | Blanc | Correspondance entre plusieurs lignes |
 | Pulsation ambre | Service ralenti ou perturbé |

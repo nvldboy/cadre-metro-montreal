@@ -2,10 +2,7 @@
 
 import time
 
-from config import (
-    TRAIN_MARKER_HANDOFF_PROGRESS,
-    TRAIN_TIMING_VARIATION_SECONDS,
-)
+from config import TRAIN_TIMING_VARIATION_SECONDS
 from metro_schedule_data import (
     DEPARTURES,
     EXCEPTIONS,
@@ -209,12 +206,15 @@ def positions_at(local_parts, previous_parts=None, fractional_second=0.0):
     return result
 
 
-def positions_now(epoch=None):
+def positions_now(epoch=None, fractional_second=None):
     """Retourne les positions estimées à l'heure actuelle de Montréal."""
     if epoch is None:
         epoch = time.time()
-    fractional_second = epoch - int(epoch)
-    local_epoch, local_parts = montreal_clock(epoch)
+    whole_epoch = int(epoch)
+    if fractional_second is None:
+        fractional_second = epoch - whole_epoch
+    fractional_second = max(0.0, min(0.999, float(fractional_second)))
+    local_epoch, local_parts = montreal_clock(whole_epoch)
     previous_parts = _utc_tuple(int(local_epoch - 86400))
     return (
         positions_at(local_parts, previous_parts, fractional_second),
@@ -223,17 +223,21 @@ def positions_now(epoch=None):
 
 
 def station_levels(positions, station_count=68, animation_seconds=None):
-    """Affiche une DEL franche par train, comme un marqueur Metroboard."""
+    """Affiche chaque train comme un point net sur une seule station."""
     # Conservé dans la signature pour les anciens appels du Pico et du
-    # simulateur; le marqueur discret ne dépend pas d'un cycle d'animation.
+    # simulateur; la progression est déjà comprise dans chaque position.
     _ = animation_seconds
     levels = [0.0] * station_count
     line_counts = [0] * len(LINES)
-    handoff = max(0.0, min(1.0, float(TRAIN_MARKER_HANDOFF_PROGRESS)))
     for line, first_station, second_station, progress, _direction in positions:
         line_counts[line] += 1
-        station = first_station if progress < handoff else second_station
-        levels[station] = 1.0
+        progress = max(0.0, min(1.0, float(progress)))
+        marker_station = (
+            first_station
+            if first_station == second_station or progress < 0.5
+            else second_station
+        )
+        levels[marker_station] = 1.0
     return levels, line_counts
 
 

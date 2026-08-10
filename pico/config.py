@@ -11,10 +11,8 @@ TRAIN_BASE_LEVEL = 0.0
 # déterministe de quelques secondes par voyage évite que tous les trains ayant
 # le même patron changent de station exactement au même instant.
 TRAIN_TIMING_VARIATION_SECONDS = 28
-# Affichage inspiré de Metroboard : une seule DEL franche représente chaque
-# rame. Elle passe de la station A à la station B à mi-parcours du segment
-# planifié. La valeur peut être ajustée entre 0.0 et 1.0 au besoin.
-TRAIN_MARKER_HANDOFF_PROGRESS = 0.50
+# Affichage lisible inspiré de Metroboard : chaque train est un seul point
+# lumineux à pleine intensité qui saute à la station suivante à mi-trajet.
 # Les pixels Amazon sont des WS2811 5 V à 800 kHz.
 PIXEL_TIMING = 1
 # Cette guirlande attend les octets dans l'ordre RGB alors que le pilote

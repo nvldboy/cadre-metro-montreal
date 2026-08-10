@@ -30,7 +30,7 @@ from gtfs_updater import (
 )
 from led_mapping import load_led_mapping
 from led_display import MetroDisplay
-from night_mode import is_night
+from night_mode import anchored_clock_parts, is_night
 from stm_status import NORMAL, SLOW, STOPPED, empty_status, parse_service_status
 from wifi_manager import (
     connect_any,
@@ -69,6 +69,11 @@ service_status = empty_status()
 clock_anchor_epoch = 0
 clock_anchor_ticks = 0
 stm_endpoint = None
+last_render_snapshot = {
+    "epoch": 0,
+    "trains": 0,
+    "active": (),
+}
 
 
 def _load_stations_map():
@@ -81,7 +86,9 @@ def _load_stations_map():
 
 def _clock_now():
     elapsed_ms = time.ticks_diff(time.ticks_ms(), clock_anchor_ticks)
-    return clock_anchor_epoch + elapsed_ms / 1000
+    # Ne jamais additionner une fraction au grand timestamp Unix sur le Pico.
+    # Son float 32 bits arrondirait alors l'heure par bonds d'environ 128 s.
+    return anchored_clock_parts(clock_anchor_epoch, elapsed_ms)
 
 
 def _configured_networks():
@@ -92,7 +99,7 @@ def _configured_networks():
 
 def _anchor_clock():
     global clock_anchor_epoch, clock_anchor_ticks
-    clock_anchor_epoch = time.time()
+    clock_anchor_epoch = int(time.time())
     clock_anchor_ticks = time.ticks_ms()
 
 
@@ -131,6 +138,7 @@ def _publish_service_status(parsed):
 
 async def animate_loop(display):
     """Anime les trains à 25 Hz et applique immédiatement les interruptions."""
+    global last_render_snapshot
     # L'horaire compact est volumineux. Il n'est chargé qu'après l'assistant
     # de configuration afin de garder le maximum de mémoire disponible.
     try:
@@ -150,9 +158,14 @@ async def animate_loop(display):
 
     last_reported_minute = -1
     last_night_mode = None
+    last_snapshot_second = -1
     while True:
-        epoch = _clock_now()
-        positions, local_parts = positions_now(epoch)
+        epoch_seconds, fractional_ms = _clock_now()
+        fractional_second = fractional_ms / 1000
+        positions, local_parts = positions_now(
+            epoch_seconds,
+            fractional_second=fractional_second,
+        )
 
         # Une ligne interrompue disparaît immédiatement de la simulation.
         running_positions = without_interrupted_lines(
@@ -161,8 +174,25 @@ async def animate_loop(display):
         )
         levels, line_counts = station_levels(
             running_positions,
-            animation_seconds=epoch,
+            animation_seconds=fractional_second,
         )
+        snapshot_second = epoch_seconds
+        if snapshot_second != last_snapshot_second:
+            last_snapshot_second = snapshot_second
+            last_render_snapshot = {
+                "epoch": epoch_seconds,
+                "millisecond": fractional_ms,
+                "trains": sum(line_counts),
+                "active": tuple(
+                    (
+                        logical_index,
+                        display.logical_to_physical[logical_index],
+                        round(level, 3),
+                    )
+                    for logical_index, level in enumerate(levels)
+                    if level > 0.02
+                ),
+            }
         now_ms = time.ticks_ms()
         # Utiliser les positions avant le filtrage des interruptions : une
         # panne générale du réseau ne doit pas être confondue avec la fermeture

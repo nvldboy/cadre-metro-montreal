@@ -6,6 +6,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "simulator"))
 
 import server
+from train_provider import current_train_payload
+from train_schedule import positions_now, station_levels
 from stm_status import STOPPED, empty_status
 
 
@@ -62,6 +64,18 @@ class SimulatorCompatibilityTests(unittest.TestCase):
         self.assertTrue(second["live"])
         self.assertIn("dernier état valide", second["source"][0])
         self.assertTrue(second["errors"])
+
+    def test_simulator_payload_uses_the_same_station_markers_as_the_pico(self):
+        epoch = 1786326558.25
+        payload = current_train_payload(epoch)
+        positions, _ = positions_now(epoch)
+        expected_levels, _ = station_levels(positions)
+
+        self.assertEqual(payload["animation"], "station_marker")
+        self.assertEqual(
+            payload["levels"],
+            [round(level, 4) for level in expected_levels],
+        )
 
 
 if __name__ == "__main__":

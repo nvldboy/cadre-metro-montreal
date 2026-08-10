@@ -4,7 +4,6 @@ from datetime import datetime
 
 from metro_schedule_data import FEED, GENERATED_AT, LINES, PATTERNS
 from stations import STATION_ORDER
-from config import TRAIN_MARKER_HANDOFF_PROGRESS
 from train_schedule import feed_is_current, positions_now, station_levels
 
 
@@ -72,7 +71,7 @@ def current_train_payload(epoch=None):
         "schedule_generated_at": GENERATED_AT,
         "generated_epoch": epoch,
         "fetched_at": local_datetime.isoformat(timespec="seconds"),
-        "marker_handoff_progress": TRAIN_MARKER_HANDOFF_PROGRESS,
+        "animation": "station_marker",
         "levels": [round(level, 4) for level in levels],
         "counts": {
             line_name: counts[index]

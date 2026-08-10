@@ -20,7 +20,7 @@ utilisant :
 |---|---|
 | Station éteinte | Aucun train théorique à proximité |
 | Une station vivement colorée | Présence estimée d’un train |
-| Le point saute à la station voisine | Le train franchit la moitié du segment prévu |
+| Point qui saute à la station suivante | Déplacement estimé d’un train, représenté par une seule DEL nette |
 | Changements répartis sur le réseau | Chaque rame suit son propre horaire légèrement désynchronisé |
 | Blanc | Station de correspondance desservie par plusieurs lignes |
 | Pulsation ambre | Service ralenti ou perturbé |
@@ -402,15 +402,16 @@ Le moteur détermine les voyages GTFS actifs à l’heure locale de Montréal.
 Pour un train situé entre la station A et la station B :
 
 ```text
-première moitié du trajet : A allumée, B éteinte
-seconde moitié du trajet  : A éteinte, B allumée
+première moitié du trajet : A vivement allumée, B éteinte
+milieu du trajet          : le point saute nettement de A vers B
+seconde moitié du trajet  : A éteinte, B vivement allumée
 ```
 
-Ce marqueur franc est inspiré du comportement visible de Metroboard. Comme le
-cadre ne possède pas de pixel entre deux stations, la DEL passe à la station
-suivante au milieu du temps de parcours planifié. Il n'y a ni fondu ni pulsation
-artificielle : les nombreux trains actifs créent eux-mêmes les changements
-répartis sur la carte.
+Comme le cadre ne possède pas de pixel entre deux stations, chaque rame est
+représentée par une seule DEL à pleine intensité. Le saut net au milieu du temps
+de parcours est beaucoup plus facile à distinguer qu’un changement subtil de
+luminosité. Chaque rame possède sa propre phase; les sauts sont donc indépendants
+et la carte reste visiblement active sans dépendre d'une séquence de test.
 
 Les stations sans train sont complètement éteintes. La luminosité globale des
 stations occupées reste limitée à 20 % dans `config.py`.
@@ -511,7 +512,7 @@ Deux tâches s’exécutent simultanément :
 - calcule l’heure locale de Montréal;
 - trouve les trains théoriques actifs;
 - calcule leur progression sur chaque segment;
-- place un marqueur franc à la station estimée la plus proche;
+- place chaque train sur une seule station et le fait sauter à mi-segment;
 - retire les trains des lignes interrompues;
 - rafraîchit les 68 pixels.
 
@@ -520,8 +521,10 @@ Deux tâches s’exécutent simultanément :
 - s’exécute immédiatement au démarrage;
 - recommence toutes les 60 secondes après le début de la requête précédente;
 - utilise une connexion HTTPS asynchrone;
-- accepte jusqu’à 50 secondes pour parcourir les grosses réponses STM;
-- réessaie après 15 secondes en cas d’échec et renouvelle la résolution DNS;
+- accepte jusqu’à 90 secondes pour parcourir une première grosse réponse STM;
+- utilise ensuite l’ETag du serveur pour recevoir rapidement « inchangé »;
+- réessaie après 15 secondes en cas d’échec et renouvelle la résolution DNS
+  seulement après une erreur de transport ou une reconnexion Wi-Fi;
 - met à jour `system_status`.
 
 Le dictionnaire partagé ressemble à ceci :
@@ -698,7 +701,7 @@ Les tests vérifient notamment :
 - les ralentissements;
 - les stations nommées dans les alertes;
 - l’exclusion des simples fermetures d’accès;
-- l’interpolation entre deux stations;
+- le saut indépendant des marqueurs entre deux stations;
 - le changement d’heure de Montréal;
 - l’arrêt ciblé d’une seule ligne;
 - la cohérence entre `stations.py` et `stations_map.json`.

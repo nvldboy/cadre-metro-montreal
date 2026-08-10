@@ -219,18 +219,18 @@
 
   function animatedLevels(trains, elapsedSeconds) {
     const levels = Array(layout.stations.length).fill(0);
-    const handoff = Math.max(
-      0,
-      Math.min(1, trains.marker_handoff_progress ?? 0.5)
-    );
     trains.trains.forEach(train => {
       const duration = Math.max(1, train.segment_duration || 1);
       const progress = Math.max(
         0,
         Math.min(1, train.progress + elapsedSeconds / duration)
       );
-      const station = progress < handoff ? train.from : train.to;
-      levels[station] = 1;
+      if (train.from === train.to) {
+        levels[train.from] = 1;
+      } else {
+        const markerStation = progress < 0.5 ? train.from : train.to;
+        levels[markerStation] = 1;
+      }
     });
     return levels;
   }

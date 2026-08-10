@@ -100,9 +100,8 @@ SIGNIFICATION DES ANIMATIONS
 ----------------------------
 
 - Ligne normale : les passages théoriques des trains sont animés à partir
-  des horaires GTFS. Une rame est représentée par une DEL franche qui passe à
-  la station suivante au milieu du temps de parcours prévu, dans le style
-  Metroboard.
+  des horaires GTFS. Chaque train est un seul point lumineux qui saute
+  nettement à la station suivante au milieu du temps de parcours prévu.
 - Ralentissement : la ligne concernée pulse selon l'état de service STM.
 - Interruption : les trains de cette ligne s'arrêtent et ses stations
   clignotent en rouge.
@@ -112,7 +111,8 @@ SIGNIFICATION DES ANIMATIONS
 - DEL intégrée du Pico allumée : dernière lecture STM réussie.
 - DEL intégrée du Pico éteinte : lecture STM impossible; le dernier état
   valide reste affiché. Le Pico réessaie après 15 secondes et accepte jusqu'à
-  50 secondes pour parcourir une grosse réponse STM.
+  90 secondes pour parcourir une grosse réponse STM; les réponses inchangées
+  sont ensuite accélérées grâce au cache du serveur.
 
 SÉCURITÉ LOGICIELLE DÉJÀ ACTIVE
 -------------------------------

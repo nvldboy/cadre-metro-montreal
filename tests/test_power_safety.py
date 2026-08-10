@@ -10,7 +10,7 @@ from config import (
     LED_MAX_CHANNEL_VALUE,
     NUMBER_OF_LEDS,
 )
-from night_mode import is_night, is_night_hour
+from night_mode import anchored_clock_parts, is_night, is_night_hour
 from power_safety import (
     color_for_pixel_driver,
     estimate_frame_current_ma,
@@ -19,6 +19,13 @@ from power_safety import (
 
 
 class PowerSafetyTests(unittest.TestCase):
+    def test_large_epoch_keeps_milliseconds_separate_from_float(self):
+        epoch, milliseconds = anchored_clock_parts(1786327680, 1234)
+        self.assertEqual(epoch, 1786327681)
+        self.assertEqual(milliseconds, 234)
+        self.assertIs(type(epoch), int)
+        self.assertIs(type(milliseconds), int)
+
     def test_pixel_driver_compensates_red_green_order(self):
         self.assertEqual(color_for_pixel_driver((10, 20, 30)), (20, 10, 30))
 

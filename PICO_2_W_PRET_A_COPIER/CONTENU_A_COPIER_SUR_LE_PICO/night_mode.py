@@ -7,6 +7,12 @@ from config import (
 )
 
 
+def anchored_clock_parts(anchor_epoch, elapsed_ms):
+    """Avance l'horloge sans convertir le timestamp Unix en float 32 bits."""
+    elapsed_seconds, fractional_ms = divmod(int(elapsed_ms), 1000)
+    return int(anchor_epoch) + elapsed_seconds, fractional_ms
+
+
 def is_night_hour(
     hour,
     enabled=NIGHT_MODE_ENABLED,

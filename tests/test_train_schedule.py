@@ -14,6 +14,7 @@ from train_schedule import (
     _timing_variation,
     feed_is_current,
     positions_at,
+    positions_now,
     station_levels,
     without_interrupted_lines,
 )
@@ -48,6 +49,14 @@ class TrainScheduleTests(unittest.TestCase):
         self.assertNotEqual(first, second)
         self.assertTrue(any(0.0 < position[3] < 1.0 for position in first))
 
+    def test_large_epoch_accepts_fraction_without_losing_precision(self):
+        epoch = 1786327680
+        first, _ = positions_now(epoch, fractional_second=0.1)
+        second, _ = positions_now(epoch, fractional_second=0.9)
+
+        self.assertEqual(len(first), len(second))
+        self.assertNotEqual(first, second)
+
     def test_station_levels_stay_in_valid_range(self):
         positions = [
             (0, 0, 1, 0.25, 0),
@@ -61,14 +70,22 @@ class TrainScheduleTests(unittest.TestCase):
         self.assertEqual(counts[0], 2)
         self.assertTrue(all(0.0 <= level <= 1.0 for level in levels))
 
-    def test_marker_stays_at_departure_before_halfway(self):
+    def test_marker_stays_on_departure_before_halfway(self):
         levels, _ = station_levels([(0, 0, 1, 0.49, 0)])
         self.assertEqual(levels[0], 1.0)
         self.assertEqual(levels[1], 0.0)
 
-    def test_marker_moves_to_arrival_at_halfway(self):
+    def test_marker_jumps_to_arrival_at_halfway(self):
         levels, _ = station_levels([(0, 0, 1, 0.50, 0)])
         self.assertEqual(levels[0], 0.0)
+        self.assertEqual(levels[1], 1.0)
+
+    def test_multiple_trains_can_occupy_both_ends_of_a_segment(self):
+        levels, _ = station_levels([
+            (0, 0, 1, 0.20, 0),
+            (0, 0, 1, 0.60, 1),
+        ])
+        self.assertEqual(levels[0], 1.0)
         self.assertEqual(levels[1], 1.0)
 
     def test_empty_network_keeps_every_station_off(self):
