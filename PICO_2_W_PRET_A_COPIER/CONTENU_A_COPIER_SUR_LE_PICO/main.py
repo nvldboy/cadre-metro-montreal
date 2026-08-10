@@ -68,6 +68,7 @@ system_status = {
 service_status = empty_status()
 clock_anchor_epoch = 0
 clock_anchor_ticks = 0
+stm_endpoint = None
 
 
 def _load_stations_map():
@@ -101,6 +102,7 @@ def _configured():
 
 async def wifi_monitor_loop(networks, onboard):
     """Rétablit Internet automatiquement sans arrêter l'animation."""
+    global stm_endpoint
     while True:
         await asyncio.sleep(WIFI_RECONNECT_INTERVAL_SECONDS)
         if is_connected():
@@ -112,6 +114,7 @@ async def wifi_monitor_loop(networks, onboard):
             await connect_any_async(networks)
             if sync_clock():
                 _anchor_clock()
+            stm_endpoint = None
             print("Connexion Wi-Fi rétablie.")
         except Exception as error:
             print("Reconnexion Wi-Fi impossible:", error)
@@ -192,6 +195,7 @@ async def animate_loop(display):
 
 async def api_monitor_loop(onboard):
     """Surveille l'état du réseau toutes les 60 secondes sans bloquer l'animation."""
+    global stm_endpoint
     while True:
         started_ms = time.ticks_ms()
         next_delay = API_MONITOR_INTERVAL_SECONDS
@@ -199,24 +203,32 @@ async def api_monitor_loop(onboard):
             try:
                 if not is_connected():
                     raise OSError("Wi-Fi non connecté")
-                # Une adresse résolue avant une reconnexion peut devenir
-                # inutilisable. La résolution est donc renouvelée à chaque
-                # cycle, comme le client du simulateur local.
-                endpoint = prepare_stm_endpoint()
+                # La résolution DNS synchrone est faite avant le démarrage de
+                # l'animation. Elle n'est reprise ici que si elle avait échoué,
+                # afin d'éviter un gel visible toutes les 60 secondes.
+                if stm_endpoint is None:
+                    stm_endpoint = prepare_stm_endpoint()
                 gc.collect()
                 payload = await asyncio.wait_for(
                     fetch_service_status_async(STM_API_KEY),
                     API_TIMEOUT_SECONDS,
                 )
-                parsed = parse_service_status(payload)
-                _publish_service_status(parsed)
+                if payload is not None:
+                    parsed = parse_service_status(payload)
+                    _publish_service_status(parsed)
+                    # Seul l'état compact publié est encore nécessaire. La
+                    # réponse filtrée peut être libérée avant la prochaine
+                    # minute pour garder une marge de mémoire confortable.
+                    payload = None
+                    parsed = None
+                    gc.collect()
                 onboard.value(1)
                 elapsed_ms = time.ticks_diff(time.ticks_ms(), started_ms)
                 print(
                     "État STM:",
                     system_status,
                     "serveur",
-                    endpoint,
+                    stm_endpoint,
                     "en",
                     elapsed_ms // 1000,
                     "s",
@@ -234,6 +246,11 @@ async def api_monitor_loop(onboard):
                     "__name__",
                     "Erreur",
                 )
+                # Un délai de lecture ou une réponse HTTP invalide ne remet
+                # pas en cause l'adresse DNS déjà résolue. Une vraie erreur de
+                # transport force toutefois une nouvelle résolution.
+                if error_name not in ("TimeoutError", "AsyncStmApiError"):
+                    stm_endpoint = None
                 detail = str(error)
                 print(
                     "Mise à jour STM impossible:",
@@ -287,7 +304,7 @@ async def main_async(display, onboard, networks):
 
 
 def run():
-    global clock_anchor_epoch, clock_anchor_ticks
+    global clock_anchor_epoch, clock_anchor_ticks, stm_endpoint
 
     if recover_schedule():
         print("Horaire GTFS récupéré après une mise à jour interrompue.")
@@ -325,6 +342,11 @@ def run():
         time.sleep(5)
 
     _anchor_clock()
+    if STM_API_KEY and STM_API_KEY != "CLE_API_STM":
+        try:
+            stm_endpoint = prepare_stm_endpoint()
+        except Exception as error:
+            print("Résolution STM reportée:", error)
     print("Horloge NTP synchronisée; démarrage des tâches.")
 
     try:

@@ -62,7 +62,7 @@ API_MONITOR_INTERVAL_SECONDS = 60
 # L'API i3 mélange parfois plus de 800 alertes d'autobus et de métro dans une
 # réponse de plus de 500 ko. Le Pico doit atteindre les alertes métro placées à
 # la fin sans abandonner prématurément la lecture HTTPS.
-API_TIMEOUT_SECONDS = 50
+API_TIMEOUT_SECONDS = 90
 WIFI_TIMEOUT_SECONDS = 20
 WIFI_RECONNECT_INTERVAL_SECONDS = 10
 # Après un échec, réessayer rapidement plutôt que d'attendre le prochain cycle
