@@ -11,7 +11,9 @@ except ImportError:
 STM_HOST = "api.stm.info"
 STM_PATH = "/pub/od/i3/v2/messages/etatservice"
 STM_CONNECT_HOST = STM_HOST
-STREAM_READ_SIZE = 1024
+# Des blocs de 4 ko réduisent fortement le nombre d'attentes réseau tout en
+# restant modestes pour la mémoire disponible du Pico 2 W.
+STREAM_READ_SIZE = 4096
 MAX_ALERT_BYTES = 8192
 
 _ALERTS_TOKEN = b'"alerts"'

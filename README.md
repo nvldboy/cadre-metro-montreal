@@ -24,7 +24,7 @@
   <img alt="Raspberry Pi Pico 2 W" src="https://img.shields.io/badge/Pico-2%20W-c51a4a">
   <img alt="MicroPython" src="https://img.shields.io/badge/MicroPython-1.28-2b2728">
   <img alt="Assistant en quatre langues" src="https://img.shields.io/badge/assistant-FR%20%7C%20EN%20%7C%20ES%20%7C%20IT-00a650">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-49%20r%C3%A9ussis-167c3a">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-57%20r%C3%A9ussis-167c3a">
 </p>
 
 > Les positions affichées sont des estimations calculées à partir des horaires
@@ -51,7 +51,7 @@ cadre doit associer ses DEL aux stations.
 
 | Fonction | Résultat |
 |---|---|
-| Trains théoriques | Interpolation fluide entre les stations selon les horaires GTFS |
+| Trains théoriques | Marqueurs francs qui passent de station en station, dans le style Metroboard |
 | État du réseau | Ralentissements et interruptions lus toutes les 60 secondes |
 | Mode nuit | Respiration lente et douce après le dernier passage prévu |
 | Première installation | Assistant Web qui identifie chaque DEL sans imposer l’ordre du câblage |
@@ -117,8 +117,9 @@ Ouvre ensuite :
 
 | Animation | Signification |
 |---|---|
-| Couleur de ligne qui se déplace | Passage théorique d’un train |
-| Deux stations voisines partiellement allumées | Train estimé entre les stations |
+| Une station vivement colorée | Présence estimée d’un train |
+| Le point saute à la station voisine | Le train franchit la moitié du segment prévu |
+| Changements répartis sur le réseau | Chaque rame suit son propre horaire légèrement désynchronisé |
 | Blanc | Correspondance entre plusieurs lignes |
 | Pulsation ambre | Service ralenti ou perturbé |
 | Clignotement rouge | Ligne interrompue ou station fermée |
@@ -193,4 +194,7 @@ sont distribués sous licence CC BY 4.0. Les secrets Wi-Fi et API demeurent
 uniquement dans le fichier local `secrets.py`.
 
 Le dépôt peut rester privé et être partagé avec des collaborateurs GitHub.
-Avant de le rendre public, il faudra choisir une licence logicielle adaptée.
+Les mises à jour d'horaire accessibles au Pico sont publiées séparément dans le
+dépôt public
+[`cadre-metro-montreal-updates`](https://github.com/nvldboy/cadre-metro-montreal-updates),
+qui ne contient aucun mot de passe ni aucune clé API.

@@ -44,7 +44,7 @@ sys.modules["neopixel"] = neopixel
 
 import led_display
 from led_display import MetroDisplay
-from stations import STATION_INDEX
+from stations import LINE_COLORS, STM_SCREEN_COLORS, STATION_INDEX
 from stm_status import STOPPED, empty_status
 
 led_display.time.ticks_diff = lambda first, second: first - second
@@ -67,8 +67,31 @@ class LedDisplayMappingTests(unittest.TestCase):
 
         logical_index = STATION_INDEX["Radisson"]
         physical_index = logical_to_physical[logical_index]
-        self.assertEqual(display.pixels[physical_index], (51, 0, 0))
-        self.assertNotEqual(display.pixels[logical_index], (51, 0, 0))
+        # La guirlande RGB reçoit le tuple compensé GRB du pilote NeoPixel.
+        self.assertEqual(display.pixels[physical_index], (0, 51, 0))
+        self.assertNotEqual(display.pixels[logical_index], (0, 51, 0))
+
+    def test_keeps_colors_from_the_official_2026_stm_map_as_reference(self):
+        self.assertEqual(
+            STM_SCREEN_COLORS,
+            {
+                "green": (0, 150, 81),
+                "orange": (216, 127, 63),
+                "yellow": (249, 219, 79),
+                "blue": (0, 114, 171),
+            },
+        )
+
+    def test_uses_the_ws2811_calibrated_palette_for_the_leds(self):
+        self.assertEqual(
+            LINE_COLORS,
+            {
+                "green": (0, 255, 10),
+                "orange": (255, 65, 0),
+                "yellow": (255, 170, 0),
+                "blue": (0, 8, 255),
+            },
+        )
 
     def test_rejects_out_of_range_physical_indexes(self):
         invalid = list(range(68))
@@ -84,7 +107,20 @@ class LedDisplayMappingTests(unittest.TestCase):
         display.render(status, now_ms=0, night_mode=True)
 
         physical_index = STATION_INDEX["Radisson"]
-        self.assertEqual(display.pixels[physical_index], (7, 0, 0))
+        self.assertEqual(display.pixels[physical_index], (0, 8, 0))
+
+    def test_unoccupied_day_stations_are_off(self):
+        display = MetroDisplay(self.stations_map)
+        train_levels = [0.0] * 68
+
+        display.render(
+            empty_status(),
+            now_ms=0,
+            train_levels=train_levels,
+            night_mode=False,
+        )
+
+        self.assertTrue(all(color == (0, 0, 0) for color in display.pixels.values))
 
     def test_night_ambient_breathes_slowly(self):
         status = empty_status()

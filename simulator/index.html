@@ -134,7 +134,7 @@
     <div class="controls">
       <label for="mode">Simulation</label>
       <select id="mode">
-        <option value="live">Direct — trains théoriques</option>
+        <option value="live">Direct — style Metroboard</option>
         <option value="night">Mode nuit — respiration paisible</option>
         <option value="normal">Tout normal</option>
         <option value="green-stop">Interruption verte</option>
@@ -171,8 +171,10 @@
   let layout;
   let liveStatus;
   let liveTrains;
+  let liveTrainAnchorMs = 0;
   let testTimer;
   let nightAnimationFrame;
+  let liveAnimationFrame;
 
   function emptyStatus() {
     return {
@@ -195,24 +197,16 @@
     return severity;
   }
 
-  function render(status, trains = null) {
-    clearInterval(testTimer);
-    cancelAnimationFrame(nightAnimationFrame);
-    document.body.classList.remove("night-preview");
+  function applyTrainLevels(status, trains) {
     document.querySelectorAll(".led").forEach((circle, index) => {
       const station = layout.stations[index];
       const severity = stationSeverity(station, status);
       const trainLevel = trains?.levels?.[index] || 0;
       const hasTrain = severity === 0 && trainLevel > 0.02;
-      circle.classList.toggle("slow", severity === 1);
-      circle.classList.toggle("stopped", severity === 2);
       circle.classList.toggle("train", hasTrain);
-      circle.style.fill = severity === 1 ? "#ff8a00" : stationColor(station);
-      circle.style.color = circle.style.fill;
       circle.style.opacity = trains && severity === 0
-        ? String(0.1 + 0.9 * trainLevel)
+        ? (hasTrain ? String(0.12 + 0.88 * trainLevel) : "0")
         : "1";
-      circle.dataset.severity = String(severity);
       circle.dataset.trainLevel = String(trainLevel);
       const trainText = hasTrain
         ? `, présence théorique ${Math.round(trainLevel * 100)} %`
@@ -221,6 +215,56 @@
         "aria-label", `${station.name}, ${stateLabels[severity]}${trainText}`
       );
     });
+  }
+
+  function animatedLevels(trains, elapsedSeconds) {
+    const levels = Array(layout.stations.length).fill(0);
+    const handoff = Math.max(
+      0,
+      Math.min(1, trains.marker_handoff_progress ?? 0.5)
+    );
+    trains.trains.forEach(train => {
+      const duration = Math.max(1, train.segment_duration || 1);
+      const progress = Math.max(
+        0,
+        Math.min(1, train.progress + elapsedSeconds / duration)
+      );
+      const station = progress < handoff ? train.from : train.to;
+      levels[station] = 1;
+    });
+    return levels;
+  }
+
+  function runLiveAnimation(now) {
+    if (
+      document.getElementById("mode").value === "live"
+      && liveStatus
+      && liveTrains
+      && layout
+    ) {
+      const elapsedSeconds = Math.max(0, (now - liveTrainAnchorMs) / 1000);
+      applyTrainLevels(
+        liveStatus,
+        {...liveTrains, levels: animatedLevels(liveTrains, elapsedSeconds)}
+      );
+    }
+    liveAnimationFrame = requestAnimationFrame(runLiveAnimation);
+  }
+
+  function render(status, trains = null) {
+    clearInterval(testTimer);
+    cancelAnimationFrame(nightAnimationFrame);
+    document.body.classList.remove("night-preview");
+    document.querySelectorAll(".led").forEach((circle, index) => {
+      const station = layout.stations[index];
+      const severity = stationSeverity(station, status);
+      circle.classList.toggle("slow", severity === 1);
+      circle.classList.toggle("stopped", severity === 2);
+      circle.style.fill = severity === 1 ? "#ff8a00" : stationColor(station);
+      circle.style.color = circle.style.fill;
+      circle.dataset.severity = String(severity);
+    });
+    applyTrainLevels(status, trains);
 
     const statuses = document.getElementById("line-statuses");
     statuses.replaceChildren();
@@ -241,7 +285,7 @@
         ? `alertes ${status.source.join(" + ")}`
         : "alertes non connectées";
       document.getElementById("meta").textContent =
-        `Prévision GTFS · ${trains.train_count} trains · ` +
+        `Style Metroboard · ${trains.train_count} trains estimés · ` +
         `${trains.fetched_at.slice(11)} · ${alertSource}`;
     } else {
       const source = status.source.length
@@ -330,6 +374,7 @@
         .then(response => response.json()),
       fetch("/api/trains").then(response => response.json())
     ]);
+    liveTrainAnchorMs = performance.now();
     if (document.getElementById("mode").value === "live") {
       render(liveStatus, liveTrains);
     }
@@ -337,7 +382,11 @@
 
   async function refreshTrains() {
     liveTrains = await fetch("/api/trains").then(response => response.json());
-    if (document.getElementById("mode").value === "live") {
+    liveTrainAnchorMs = performance.now();
+    if (
+      liveStatus
+      && document.getElementById("mode").value === "live"
+    ) {
       render(liveStatus, liveTrains);
     }
   }
@@ -370,6 +419,8 @@
       group.appendChild(circle);
     });
     await refresh();
+    cancelAnimationFrame(liveAnimationFrame);
+    liveAnimationFrame = requestAnimationFrame(runLiveAnimation);
   }
 
   document.getElementById("mode").addEventListener("change", event => {

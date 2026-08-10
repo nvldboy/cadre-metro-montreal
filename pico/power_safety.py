@@ -6,6 +6,7 @@ from config import (
     NUMBER_OF_LEDS,
     PIXEL_CHANNEL_FULL_MA,
     PIXEL_IDLE_CURRENT_MA,
+    PIXEL_SWAP_RED_GREEN,
 )
 
 
@@ -17,6 +18,14 @@ def _clamp_color(color):
     if not isinstance(color, (tuple, list)) or len(color) != 3:
         raise ValueError("Une couleur doit contenir trois canaux RGB")
     return tuple(_clamp_channel(channel) for channel in color)
+
+
+def color_for_pixel_driver(color):
+    """Convertit une couleur RGB logique pour l'ordre réel de la guirlande."""
+    if PIXEL_SWAP_RED_GREEN:
+        red, green, blue = color
+        return (green, red, blue)
+    return color
 
 
 def estimate_frame_current_ma(colors):
@@ -58,6 +67,6 @@ def write_limited(pixels, colors):
     """Seul point d'écriture normal vers le tampon NeoPixel."""
     limited = limit_frame(colors)
     for index, color in enumerate(limited):
-        pixels[index] = color
+        pixels[index] = color_for_pixel_driver(color)
     pixels.write()
     return estimate_frame_current_ma(limited)

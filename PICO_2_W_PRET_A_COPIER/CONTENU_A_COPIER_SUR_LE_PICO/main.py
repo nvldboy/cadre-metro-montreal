@@ -20,6 +20,7 @@ from config import (
     GTFS_UPDATE_MANIFEST_URL,
     GTFS_UPDATE_STARTUP_DELAY_SECONDS,
     GTFS_UPDATE_TIMEOUT_SECONDS,
+    RETRY_DELAY_SECONDS,
     WIFI_RECONNECT_INTERVAL_SECONDS,
 )
 from gtfs_updater import (
@@ -155,7 +156,10 @@ async def animate_loop(display):
             positions,
             system_status,
         )
-        levels, line_counts = station_levels(running_positions)
+        levels, line_counts = station_levels(
+            running_positions,
+            animation_seconds=epoch,
+        )
         now_ms = time.ticks_ms()
         # Utiliser les positions avant le filtrage des interruptions : une
         # panne générale du réseau ne doit pas être confondue avec la fermeture
@@ -189,8 +193,17 @@ async def animate_loop(display):
 async def api_monitor_loop(onboard):
     """Surveille l'état du réseau toutes les 60 secondes sans bloquer l'animation."""
     while True:
+        started_ms = time.ticks_ms()
+        next_delay = API_MONITOR_INTERVAL_SECONDS
         if STM_API_KEY and STM_API_KEY != "CLE_API_STM":
             try:
+                if not is_connected():
+                    raise OSError("Wi-Fi non connecté")
+                # Une adresse résolue avant une reconnexion peut devenir
+                # inutilisable. La résolution est donc renouvelée à chaque
+                # cycle, comme le client du simulateur local.
+                endpoint = prepare_stm_endpoint()
+                gc.collect()
                 payload = await asyncio.wait_for(
                     fetch_service_status_async(STM_API_KEY),
                     API_TIMEOUT_SECONDS,
@@ -198,16 +211,41 @@ async def api_monitor_loop(onboard):
                 parsed = parse_service_status(payload)
                 _publish_service_status(parsed)
                 onboard.value(1)
-                print("État STM:", system_status)
+                elapsed_ms = time.ticks_diff(time.ticks_ms(), started_ms)
+                print(
+                    "État STM:",
+                    system_status,
+                    "serveur",
+                    endpoint,
+                    "en",
+                    elapsed_ms // 1000,
+                    "s",
+                )
+                # Conserver un départ de requête approximativement chaque
+                # minute même lorsque la grosse réponse prend du temps.
+                next_delay = max(
+                    1,
+                    API_MONITOR_INTERVAL_SECONDS - elapsed_ms // 1000,
+                )
             except Exception as error:
                 onboard.value(0)
-                print("Mise à jour STM impossible:", error)
+                error_name = getattr(
+                    getattr(error, "__class__", None),
+                    "__name__",
+                    "Erreur",
+                )
+                detail = str(error)
+                print(
+                    "Mise à jour STM impossible:",
+                    error_name + ((": " + detail) if detail else ""),
+                )
                 # Le dernier état valide reste affiché.
+                next_delay = RETRY_DELAY_SECONDS
         else:
             onboard.value(1)
             print("Alertes STM désactivées: aucune clé API.")
 
-        await asyncio.sleep(API_MONITOR_INTERVAL_SECONDS)
+        await asyncio.sleep(next_delay)
 
 
 async def gtfs_update_loop():
@@ -287,8 +325,6 @@ def run():
         time.sleep(5)
 
     _anchor_clock()
-    if STM_API_KEY and STM_API_KEY != "CLE_API_STM":
-        prepare_stm_endpoint()
     print("Horloge NTP synchronisée; démarrage des tâches.")
 
     try:

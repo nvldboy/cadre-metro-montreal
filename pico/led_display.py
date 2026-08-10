@@ -38,7 +38,9 @@ OFF = (0, 0, 0)
 
 def _scaled(color, factor):
     factor = max(0.0, min(1.0, factor))
-    return tuple(int(channel * factor) for channel in color)
+    # L'arrondi conserve mieux les rapports de couleur aux faibles niveaux
+    # que la troncature, notamment le canal vert de la ligne orange.
+    return tuple(int(channel * factor + 0.5) for channel in color)
 
 
 def _normal_station_color(station_name):

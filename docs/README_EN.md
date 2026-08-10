@@ -49,8 +49,8 @@ Open `http://127.0.0.1:8765/` for the simulator or
 
 | Animation | Meaning |
 |---|---|
-| Moving line colour | Estimated train passage |
-| Two partially lit adjacent stations | Train estimated between stations |
+| One brightly coloured station | Estimated presence of a train |
+| Marker jumps to the adjacent station | Train passes the scheduled segment midpoint |
 | White | Transfer station |
 | Amber pulse | Delayed or disrupted service |
 | Red blink | Interrupted line or closed station |

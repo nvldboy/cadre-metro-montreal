@@ -49,8 +49,8 @@ Apri `http://127.0.0.1:8765/` per il simulatore oppure
 
 | Animazione | Significato |
 |---|---|
-| Colore della linea in movimento | Passaggio stimato di un treno |
-| Due stazioni vicine parzialmente illuminate | Treno stimato fra le stazioni |
+| Una stazione dai colori vivaci | Presenza stimata di un treno |
+| Il segnalino salta alla stazione vicina | Il treno supera la metà prevista del segmento |
 | Bianco | Stazione di interscambio |
 | Pulsazione ambra | Servizio rallentato o perturbato |
 | Lampeggio rosso | Linea interrotta o stazione chiusa |

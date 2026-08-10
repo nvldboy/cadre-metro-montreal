@@ -1,4 +1,4 @@
-"""Renommer ce fichier secrets.py et remplacer les valeurs."""
+"""Copier ce fichier sous le nom secrets.py et remplacer les valeurs."""
 
 WIFI_SSID = "NOM_DU_WIFI"
 WIFI_PASSWORD = "MOT_DE_PASSE_WIFI"

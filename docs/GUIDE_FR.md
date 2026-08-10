@@ -18,9 +18,10 @@ utilisant :
 
 | Apparence | Signification |
 |---|---|
-| Couleur de ligne très faible | Station sans train théorique à proximité |
-| Couleur de ligne qui augmente puis diminue | Passage estimé d’un train |
-| Deux stations voisines partiellement allumées | Train estimé entre ces deux stations |
+| Station éteinte | Aucun train théorique à proximité |
+| Une station vivement colorée | Présence estimée d’un train |
+| Le point saute à la station voisine | Le train franchit la moitié du segment prévu |
+| Changements répartis sur le réseau | Chaque rame suit son propre horaire légèrement désynchronisé |
 | Blanc | Station de correspondance desservie par plusieurs lignes |
 | Pulsation ambre | Service ralenti ou perturbé |
 | Clignotement rouge | Ligne interrompue ou station fermée |
@@ -401,16 +402,23 @@ Le moteur détermine les voyages GTFS actifs à l’heure locale de Montréal.
 Pour un train situé entre la station A et la station B :
 
 ```text
-départ de A : A = 100 %, B = 0 %
-au milieu   : A = 50 %,  B = 50 %
-arrivée à B : A = 0 %,   B = 100 %
+première moitié du trajet : A allumée, B éteinte
+seconde moitié du trajet  : A éteinte, B allumée
 ```
 
-Comme il n’existe pas de pixel entre deux stations, le déplacement est
-représenté par un transfert progressif de luminosité.
+Ce marqueur franc est inspiré du comportement visible de Metroboard. Comme le
+cadre ne possède pas de pixel entre deux stations, la DEL passe à la station
+suivante au milieu du temps de parcours planifié. Il n'y a ni fondu ni pulsation
+artificielle : les nombreux trains actifs créent eux-mêmes les changements
+répartis sur la carte.
 
-Les stations sans train restent visibles à 15 % du niveau maximal. La
-luminosité globale est limitée à 20 % dans `config.py`.
+Les stations sans train sont complètement éteintes. La luminosité globale des
+stations occupées reste limitée à 20 % dans `config.py`.
+
+Comme le GTFS statique arrondit souvent les passages à la minute, chaque voyage
+reçoit une petite variation déterministe pouvant atteindre 28 secondes. Cette
+variation demeure stable après un redémarrage et évite que plusieurs trains
+avancent en bloc.
 
 ### Mode nuit
 
@@ -502,16 +510,18 @@ Deux tâches s’exécutent simultanément :
 - cadence : 40 ms, soit environ 25 images par seconde;
 - calcule l’heure locale de Montréal;
 - trouve les trains théoriques actifs;
-- interpole leur position;
+- calcule leur progression sur chaque segment;
+- place un marqueur franc à la station estimée la plus proche;
 - retire les trains des lignes interrompues;
 - rafraîchit les 68 pixels.
 
 ### `api_monitor_loop`
 
 - s’exécute immédiatement au démarrage;
-- recommence toutes les 60 secondes;
+- recommence toutes les 60 secondes après le début de la requête précédente;
 - utilise une connexion HTTPS asynchrone;
-- limite chaque tentative à 20 secondes;
+- accepte jusqu’à 50 secondes pour parcourir les grosses réponses STM;
+- réessaie après 15 secondes en cas d’échec et renouvelle la résolution DNS;
 - met à jour `system_status`.
 
 Le dictionnaire partagé ressemble à ceci :
@@ -549,7 +559,7 @@ et ne commande aucun matériel.
 
 | Mode | Utilité |
 |---|---|
-| Direct — trains théoriques | Horaire GTFS actuel avec alertes STM |
+| Direct — style Metroboard | Marqueurs de trains estimés selon le GTFS, avec alertes STM |
 | Mode nuit — respiration paisible | Prévisualise le cycle nocturne de 18 secondes; sa luminosité est amplifiée à l’écran |
 | Tout normal | Affichage statique sans trains ni perturbations |
 | Interruption verte | Test du clignotement rouge de la ligne verte |
@@ -582,7 +592,8 @@ Les paramètres se trouvent dans [`pico/config.py`](../pico/config.py).
 DATA_PIN = 0
 NUMBER_OF_LEDS = 68
 BRIGHTNESS = 0.20
-TRAIN_BASE_LEVEL = 0.15
+TRAIN_BASE_LEVEL = 0.0
+TRAIN_TIMING_VARIATION_SECONDS = 28
 PIXEL_TIMING = 1
 
 LED_CURRENT_LIMIT_MA = 1000
@@ -641,26 +652,29 @@ Le projet contient maintenant une chaîne de mise à jour complète :
    de la STM;
 2. `scripts/build_metro_schedule.py` produit un candidat compact;
 3. `scripts/publish_gtfs_update.py` ignore les reconstructions identiques et
-   publie `updates/latest.json` avec le fichier et son empreinte SHA-256;
-4. `pico/gtfs_updater.py` vérifie quotidiennement le manifeste, télécharge le
+   publie `updates/latest.json` avec le fichier et son empreinte SHA-256, puis
+   synchronise la copie prête à déposer sur le Pico;
+4. `scripts/update_package_manifest.py` recalcule les empreintes du livrable;
+5. `pico/gtfs_updater.py` vérifie quotidiennement le manifeste, télécharge le
    fichier par blocs de 1 Ko, le valide, garde une sauvegarde, puis redémarre;
-5. si le téléchargement ou l’écriture est interrompu, l’ancien horaire reste
+6. si le téléchargement ou l’écriture est interrompu, l’ancien horaire reste
    utilisable ou est restauré au démarrage suivant.
 
-Pour activer le téléchargement sur le cadre, publier ce projet dans un dépôt
-GitHub **public**, puis régler dans `pico/config.py` :
+Les données sont publiées automatiquement dans le dépôt public séparé
+[`nvldboy/cadre-metro-montreal-updates`](https://github.com/nvldboy/cadre-metro-montreal-updates).
+Le dépôt principal peut donc rester privé. La configuration livrée contient :
 
 ```python
 GTFS_AUTO_UPDATE_ENABLED = True
 GTFS_UPDATE_MANIFEST_URL = (
-    "https://raw.githubusercontent.com/UTILISATEUR/DEPOT/"
-    "main/updates/latest.json"
+    "https://raw.githubusercontent.com/nvldboy/"
+    "cadre-metro-montreal-updates/main/updates/latest.json"
 )
 ```
 
 Ne jamais ajouter `pico/secrets.py` au dépôt. Il est déjà exclu par
-`.gitignore`. Sans URL de manifeste, la mise à jour automatique demeure
-désactivée et l’horaire intégré continue de fonctionner.
+`.gitignore`. Le Pico vérifie le manifeste une fois par jour et conserve
+l’horaire intégré si le service public est temporairement inaccessible.
 
 ## Tests du programme
 

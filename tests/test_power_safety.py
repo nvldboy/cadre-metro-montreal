@@ -11,10 +11,17 @@ from config import (
     NUMBER_OF_LEDS,
 )
 from night_mode import is_night, is_night_hour
-from power_safety import estimate_frame_current_ma, limit_frame
+from power_safety import (
+    color_for_pixel_driver,
+    estimate_frame_current_ma,
+    limit_frame,
+)
 
 
 class PowerSafetyTests(unittest.TestCase):
+    def test_pixel_driver_compensates_red_green_order(self):
+        self.assertEqual(color_for_pixel_driver((10, 20, 30)), (20, 10, 30))
+
     def test_full_white_frame_is_clamped_below_current_budget(self):
         frame = [(255, 255, 255)] * NUMBER_OF_LEDS
         limited = limit_frame(frame)

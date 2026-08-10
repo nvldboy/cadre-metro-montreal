@@ -11,6 +11,7 @@ from stations import LINE_STATIONS, STATION_ORDER
 from night_mode import is_night
 from train_schedule import (
     _montreal_utc_offset,
+    _timing_variation,
     feed_is_current,
     positions_at,
     station_levels,
@@ -19,6 +20,15 @@ from train_schedule import (
 
 
 class TrainScheduleTests(unittest.TestCase):
+    def test_departures_receive_independent_stable_timing_variations(self):
+        departures = (19800, 20400, 21000, 21600, 22200)
+        variations = [_timing_variation(0, value) for value in departures]
+        self.assertGreater(len(set(variations)), 1)
+        self.assertEqual(
+            variations,
+            [_timing_variation(0, value) for value in departures],
+        )
+
     def test_weekday_evening_has_trains_on_every_line(self):
         local = (2026, 7, 28, 20, 42, 0, 1, 209)
         previous = (2026, 7, 27, 20, 42, 0, 0, 208)
@@ -44,12 +54,27 @@ class TrainScheduleTests(unittest.TestCase):
             (0, 2, 3, 0.75, 1),
         ]
         levels, counts = station_levels(positions)
-        self.assertEqual(levels[0], 0.75)
-        self.assertEqual(levels[1], 0.25)
-        self.assertEqual(levels[2], 0.25)
-        self.assertEqual(levels[3], 0.75)
+        self.assertEqual(levels[0], 1.0)
+        self.assertEqual(levels[1], 0.0)
+        self.assertEqual(levels[2], 0.0)
+        self.assertEqual(levels[3], 1.0)
         self.assertEqual(counts[0], 2)
         self.assertTrue(all(0.0 <= level <= 1.0 for level in levels))
+
+    def test_marker_stays_at_departure_before_halfway(self):
+        levels, _ = station_levels([(0, 0, 1, 0.49, 0)])
+        self.assertEqual(levels[0], 1.0)
+        self.assertEqual(levels[1], 0.0)
+
+    def test_marker_moves_to_arrival_at_halfway(self):
+        levels, _ = station_levels([(0, 0, 1, 0.50, 0)])
+        self.assertEqual(levels[0], 0.0)
+        self.assertEqual(levels[1], 1.0)
+
+    def test_empty_network_keeps_every_station_off(self):
+        levels, counts = station_levels([])
+        self.assertTrue(all(level == 0.0 for level in levels))
+        self.assertTrue(all(count == 0 for count in counts))
 
     def test_interruption_removes_only_affected_line(self):
         positions = [

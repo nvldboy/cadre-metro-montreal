@@ -66,10 +66,16 @@ MISE À JOUR AUTOMATIQUE DU GTFS
 -------------------------------
 
 Le logiciel de téléchargement, de validation SHA-256, de sauvegarde et de
-restauration est inclus. Il demeure sans effet tant qu'une adresse de manifeste
-accessible au Pico n'est pas inscrite dans config.py. Le Pico vérifiera cette
-adresse chaque jour et redémarrera seulement lorsqu'un nouvel horaire compact
-aura été validé et installé.
+restauration est inclus et déjà activé dans config.py. Le Pico vérifie chaque
+jour le manifeste public suivant et redémarre seulement lorsqu'un nouvel
+horaire compact a été validé et installé :
+
+https://raw.githubusercontent.com/nvldboy/cadre-metro-montreal-updates/main/updates/latest.json
+
+Le dépôt principal reste privé. Le petit dépôt public contient seulement les
+données GTFS nécessaires et ne contient aucun mot de passe ni aucune clé STM.
+Si le service public est temporairement inaccessible, l'horaire déjà installé
+continue de fonctionner.
 
 CE QUI ARRIVE AU PREMIER DÉMARRAGE
 ---------------------------------
@@ -94,7 +100,9 @@ SIGNIFICATION DES ANIMATIONS
 ----------------------------
 
 - Ligne normale : les passages théoriques des trains sont animés à partir
-  des horaires GTFS.
+  des horaires GTFS. Une rame est représentée par une DEL franche qui passe à
+  la station suivante au milieu du temps de parcours prévu, dans le style
+  Metroboard.
 - Ralentissement : la ligne concernée pulse selon l'état de service STM.
 - Interruption : les trains de cette ligne s'arrêtent et ses stations
   clignotent en rouge.
@@ -103,7 +111,8 @@ SIGNIFICATION DES ANIMATIONS
   premier départ prévu.
 - DEL intégrée du Pico allumée : dernière lecture STM réussie.
 - DEL intégrée du Pico éteinte : lecture STM impossible; le dernier état
-  valide reste affiché.
+  valide reste affiché. Le Pico réessaie après 15 secondes et accepte jusqu'à
+  50 secondes pour parcourir une grosse réponse STM.
 
 SÉCURITÉ LOGICIELLE DÉJÀ ACTIVE
 -------------------------------
