@@ -127,7 +127,7 @@ Ouvre ensuite :
 | Balayage dans la couleur d’une ligne | Reprise du service |
 | Chenillard cyan | Connexion ou reconnexion Wi-Fi |
 | Magenta long–court–court | Configuration absente ou invalide |
-| Respiration à environ 0,2–0,9 % | Mode nuit après le dernier train |
+| Respiration à environ 0,1–0,45 % | Mode nuit après le dernier train |
 
 Le simulateur contient maintenant des aperçus séparés pour le démarrage, le
 Wi-Fi, la synchronisation de l’heure, les erreurs GTFS, les mises à jour et la

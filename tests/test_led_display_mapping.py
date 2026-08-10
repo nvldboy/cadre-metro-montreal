@@ -108,7 +108,7 @@ class LedDisplayMappingTests(unittest.TestCase):
         display.render(status, now_ms=0, night_mode=True)
 
         physical_index = STATION_INDEX["Radisson"]
-        self.assertEqual(display.pixels[physical_index], (0, 4, 0))
+        self.assertEqual(display.pixels[physical_index], (0, 2, 0))
 
     def test_line_interruption_and_station_closure_use_distinct_rhythms(self):
         station_name = "Radisson"
@@ -180,7 +180,7 @@ class LedDisplayMappingTests(unittest.TestCase):
             sum(bright_display.pixels[index]),
             sum(dim_display.pixels[index]),
         )
-        self.assertLessEqual(max(bright_display.pixels[index]), 2)
+        self.assertLessEqual(max(bright_display.pixels[index]), 1)
 
 
 if __name__ == "__main__":

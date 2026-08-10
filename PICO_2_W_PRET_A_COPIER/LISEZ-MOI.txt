@@ -111,7 +111,7 @@ SIGNIFICATION DES ANIMATIONS
 - Configuration invalide : trois DEL magenta répètent long-court-court.
 - Reprise du service : un point balaie une fois la ligne dans sa couleur.
 - Nuit : après le dernier train réellement prévu, toute la carte respire
-  très lentement entre environ 0,2 % et 0,9 %; elle revient au mode normal
+  très lentement entre environ 0,1 % et 0,45 %; elle revient au mode normal
   au premier départ prévu.
 - DEL intégrée du Pico allumée : dernière lecture STM réussie.
 - DEL intégrée du Pico éteinte : lecture STM impossible; le dernier état
@@ -126,7 +126,7 @@ SÉCURITÉ LOGICIELLE DÉJÀ ACTIVE
 - Luminosité normale limitée à 20 %.
 - Chaque canal RGB est plafonné à 64 sur 255.
 - Budget estimé de la chaîne limité à environ 1 000 mA.
-- Mode nuit limité à environ 0,2 % à 0,9 % de luminosité réelle.
+- Mode nuit limité à environ 0,1 % à 0,45 % de luminosité réelle.
 
 Le limiteur logiciel réduit fortement la charge, mais il ne remplace pas un
 branchement correct. Coupe toujours l'alimentation avant de modifier les fils.

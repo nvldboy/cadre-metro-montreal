@@ -35,8 +35,8 @@ LED_MAX_CHANNEL_VALUE = 64
 NIGHT_MODE_ENABLED = True
 NIGHT_START_HOUR = 23
 NIGHT_END_HOUR = 6
-NIGHT_BRIGHTNESS = 0.015
-# Respiration très lente de toute la carte, entre environ 0,2 % et 0,9 % de
+NIGHT_BRIGHTNESS = 0.0075
+# Respiration très lente de toute la carte, entre environ 0,1 % et 0,45 % de
 # luminosité réelle. Le minimum reste perceptible sans éclairer la pièce.
 NIGHT_AMBIENT_ENABLED = True
 NIGHT_AMBIENT_PERIOD_MS = 18000

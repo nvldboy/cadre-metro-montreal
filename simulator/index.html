@@ -369,10 +369,10 @@
       if (document.getElementById("mode").value !== "night") return;
       const phase = 2 * Math.PI * ((now - startedAt) % periodMs) / periodMs;
       const breath = (Math.sin(phase - Math.PI / 2) + 1) / 2;
-      const actualBrightness = 0.00225 + 0.00675 * breath;
+      const actualBrightness = 0.001125 + 0.003375 * breath;
       // L'opacité reste amplifiée à l'écran, mais reflète le nouveau mode
       // nocturne beaucoup plus discret du cadre physique.
-      const previewOpacity = 0.04 + 0.24 * breath;
+      const previewOpacity = 0.02 + 0.12 * breath;
 
       document.querySelectorAll(".led").forEach(circle => {
         if (circle.dataset.severity === "0") {
@@ -614,7 +614,7 @@
       render(emptyStatus());
       runNightAnimation();
       document.getElementById("detail").textContent =
-        "La carte respire entre environ 0,2 % et 0,9 % après le dernier train.";
+        "La carte respire entre environ 0,1 % et 0,45 % après le dernier train.";
     }
     else if (event.target.value === "test") {
       render(emptyStatus());

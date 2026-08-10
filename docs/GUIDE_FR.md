@@ -30,7 +30,7 @@ utilisant :
 | Point blanc parcourant la chaîne | Mise sous tension et autotest |
 | Chenillard cyan | Connexion ou reconnexion Wi‑Fi |
 | Une DEL blanche clignote et le Wi‑Fi `Metro-Setup` apparaît | Assistant de première configuration |
-| Respiration à environ 0,2–0,9 % après le dernier train | Mode nuit automatique |
+| Respiration à environ 0,1–0,45 % après le dernier train | Mode nuit automatique |
 
 Lorsqu’une ligne est interrompue, ses trains théoriques sont immédiatement
 retirés de l’animation. Ses stations clignotent en rouge pendant que les autres
@@ -434,8 +434,8 @@ Par défaut :
 - il se termine dès le premier train du matin, ou au plus tard à 6 h;
 - toute la carte respire lentement dans ses couleurs de ligne;
 - un cycle complet dure 18 secondes;
-- la luminosité oscille doucement entre environ 0,2 % et 0,9 %;
-- les perturbations restent visibles à seulement 1,5 % au maximum pendant la
+- la luminosité oscille doucement entre environ 0,1 % et 0,45 %;
+- les perturbations restent visibles à seulement 0,75 % au maximum pendant la
   fermeture.
 
 Une prolongation d’horaire repousse donc automatiquement le mode nuit. Une
