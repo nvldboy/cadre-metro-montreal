@@ -2,6 +2,7 @@
 
 import time
 
+from config import TRAIN_TIMING_VARIATION_SECONDS
 from metro_schedule_data import (
     DEPARTURES,
     EXCEPTIONS,
@@ -13,6 +14,15 @@ from metro_schedule_data import (
 
 _utc_tuple = getattr(time, "gmtime", time.localtime)
 _service_cache = {}
+
+
+def _timing_variation(pattern_index, departure):
+    """Décalage stable par voyage pour désynchroniser le GTFS à la minute."""
+    spread = max(0, int(TRAIN_TIMING_VARIATION_SECONDS))
+    if spread == 0:
+        return 0
+    span = 2 * spread + 1
+    return ((departure * 17 + pattern_index * 31) % span) - spread
 
 
 def _weekday(year, month, day):
@@ -128,11 +138,21 @@ def _append_positions(result, date_code, weekday, service_second):
 
         line, direction, _headsign, stations, offsets = PATTERNS[pattern_index]
         duration = offsets[-1]
-        first = _lower_bound(starts, service_second - duration)
-        last = _upper_bound(starts, service_second)
+        spread = max(0, int(TRAIN_TIMING_VARIATION_SECONDS))
+        first = _lower_bound(
+            starts,
+            service_second - duration - spread,
+        )
+        last = _upper_bound(starts, service_second + spread)
 
         for departure in starts[first:last]:
-            elapsed = service_second - departure
+            elapsed = (
+                service_second
+                - departure
+                + _timing_variation(pattern_index, departure)
+            )
+            if elapsed < 0 or elapsed > duration:
+                continue
             segment = _upper_bound(offsets, elapsed) - 1
             if segment < 0:
                 continue
@@ -186,12 +206,15 @@ def positions_at(local_parts, previous_parts=None, fractional_second=0.0):
     return result
 
 
-def positions_now(epoch=None):
+def positions_now(epoch=None, fractional_second=None):
     """Retourne les positions estimées à l'heure actuelle de Montréal."""
     if epoch is None:
         epoch = time.time()
-    fractional_second = epoch - int(epoch)
-    local_epoch, local_parts = montreal_clock(epoch)
+    whole_epoch = int(epoch)
+    if fractional_second is None:
+        fractional_second = epoch - whole_epoch
+    fractional_second = max(0.0, min(0.999, float(fractional_second)))
+    local_epoch, local_parts = montreal_clock(whole_epoch)
     previous_parts = _utc_tuple(int(local_epoch - 86400))
     return (
         positions_at(local_parts, previous_parts, fractional_second),
@@ -199,15 +222,22 @@ def positions_now(epoch=None):
     )
 
 
-def station_levels(positions, station_count=68):
-    """Partage l'intensité d'un train entre ses deux stations voisines."""
+def station_levels(positions, station_count=68, animation_seconds=None):
+    """Affiche chaque train comme un point net sur une seule station."""
+    # Conservé dans la signature pour les anciens appels du Pico et du
+    # simulateur; la progression est déjà comprise dans chaque position.
+    _ = animation_seconds
     levels = [0.0] * station_count
     line_counts = [0] * len(LINES)
     for line, first_station, second_station, progress, _direction in positions:
         line_counts[line] += 1
-        first_level = 1.0 - progress
-        levels[first_station] = max(levels[first_station], first_level)
-        levels[second_station] = max(levels[second_station], progress)
+        progress = max(0.0, min(1.0, float(progress)))
+        marker_station = (
+            first_station
+            if first_station == second_station or progress < 0.5
+            else second_station
+        )
+        levels[marker_station] = 1.0
     return levels, line_counts
 
 

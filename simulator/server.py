@@ -3,6 +3,7 @@
 
 import importlib.util
 import argparse
+import copy
 import json
 import os
 import sys
@@ -19,18 +20,22 @@ PICO = ROOT / "pico"
 SIMULATOR = ROOT / "simulator"
 MAP_FILE = ROOT / "metro-montreal-stm-fidele-18x24-led12.svg"
 SETUP_PAGE = PICO / "setup.html"
+ADMIN_PAGE = PICO / "admin.html"
 UPDATES = ROOT / "updates"
 sys.path.insert(0, str(PICO))
 sys.path.insert(0, str(SIMULATOR))
 
 from stations import LINE_COLORS, STATION_LINES, STATION_ORDER
 from stm_status import empty_status, parse_service_status
-from transit_status import parse_transit_alerts
-from transit_client import TransitClient
 from train_provider import current_train_payload
+from runtime_settings import DEFAULTS, validate_settings
 
 STM_URL = "https://api.stm.info/pub/od/i3/v2/messages/etatservice"
 CACHE_SECONDS = 55
+SIMULATOR_STARTED_AT = time.time()
+CONTROL_PREVIEW_PIN = "metro68"
+CONTROL_PREVIEW_SETTINGS = dict(DEFAULTS)
+CONTROL_PREVIEW_LOCK = threading.Lock()
 
 
 def _load_local_secrets():
@@ -42,11 +47,7 @@ def _load_local_secrets():
     spec.loader.exec_module(module)
     return {
         name: getattr(module, name, "")
-        for name in (
-            "STM_API_KEY",
-            "TRANSIT_API_KEY",
-            "TRANSIT_NETWORK_IDS",
-        )
+        for name in ("STM_API_KEY",)
     }
 
 
@@ -115,7 +116,7 @@ class StatusProvider:
     def __init__(self):
         self.cached = None
         self.cached_at = 0
-        self.transit = None
+        self.last_valid = None
 
     def get(self, force=False):
         now = time.time()
@@ -126,50 +127,41 @@ class StatusProvider:
         ):
             return self.cached
 
-        result = empty_status()
-        result.update({
+        metadata = {
             "source": [],
             "errors": [],
             "fetched_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "live": False,
-        })
+            "stale": False,
+        }
+        result = empty_status()
+        result.update(metadata)
 
         stm_key = _secret("STM_API_KEY")
-        transit_key = _secret("TRANSIT_API_KEY")
 
         if stm_key:
             try:
                 _merge(result, _get_stm_status(stm_key))
                 result["source"].append("STM i3 v2")
+                result["live"] = True
+                self.last_valid = copy.deepcopy(result)
             except Exception as error:
+                if self.last_valid is not None:
+                    # Le Pico conserve lui aussi le dernier état STM valide si
+                    # une requête échoue. Le simulateur doit montrer exactement
+                    # cette même information, sans revenir artificiellement à
+                    # un réseau normal.
+                    result = copy.deepcopy(self.last_valid)
+                    result.update(metadata)
+                    result["source"] = ["STM i3 v2 — dernier état valide"]
+                    result["live"] = True
+                    result["stale"] = True
                 result["errors"].append("STM: {}".format(error))
 
-        if transit_key:
-            try:
-                if self.transit is None:
-                    self.transit = TransitClient(
-                        transit_key,
-                        STATION_ORDER,
-                        _secret("TRANSIT_NETWORK_IDS"),
-                    )
-                alerts = self.transit.fetch_alerts()
-                _merge(
-                    result,
-                    parse_transit_alerts(
-                        alerts,
-                        self.transit.route_map,
-                        self.transit.stop_map,
-                    ),
-                )
-                result["source"].append("Transit v4")
-            except Exception as error:
-                result["errors"].append("Transit: {}".format(error))
-
-        result["live"] = bool(result["source"])
-        if not stm_key and not transit_key:
+        if not stm_key:
             result["messages"].append(
                 "Les trains théoriques fonctionnent sans clé. Ajoute une clé "
-                "STM ou Transit seulement pour superposer les alertes réseau."
+                "STM pour superposer les mêmes alertes réseau que le Pico."
             )
             result["message_count"] = len(result["messages"])
 
@@ -286,6 +278,43 @@ class Handler(SimpleHTTPRequestHandler):
             return {}
         return json.loads(self.rfile.read(length).decode("utf-8"))
 
+    def _control_authorized(self, payload=None):
+        supplied = self.headers.get("X-Control-Pin", "")
+        if not supplied and isinstance(payload, dict):
+            supplied = str(payload.get("pin", ""))
+        return supplied == CONTROL_PREVIEW_PIN
+
+    def _control_state(self):
+        trains = current_train_payload()
+        status = PROVIDER.get()
+        severity_names = {0: "ok", 1: "slow", 2: "interrupted"}
+        with CONTROL_PREVIEW_LOCK:
+            settings = dict(CONTROL_PREVIEW_SETTINGS)
+        return {
+            "ok": True,
+            "preview": True,
+            "wifi": {
+                "connected": True,
+                "ssid": "Simulation locale",
+                "ip": "127.0.0.1",
+            },
+            "local_time": datetime.now().astimezone().strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
+            "trains": trains["train_count"],
+            "active_stations": sum(level > 0.02 for level in trains["levels"]),
+            "lines": {
+                name: severity_names.get(severity, "ok")
+                for name, severity in status["lines"].items()
+            },
+            "api_failures": len(status.get("errors", ())),
+            "gtfs_current": trains["feed_current"],
+            "memory_free": 330000,
+            "uptime_seconds": int(time.time() - SIMULATOR_STARTED_AT),
+            "night_active": settings["display_mode"] == "night",
+            "settings": settings,
+        }
+
     def do_GET(self):
         if self.path in (
             "/updates/latest.json",
@@ -315,6 +344,21 @@ class Handler(SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(body)
             return
+        if self.path.startswith("/admin-preview"):
+            body = ADMIN_PAGE.read_bytes()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+            return
+        if self.path.startswith("/api/state"):
+            if not self._control_authorized():
+                self._json({"ok": False, "error": "Accès refusé"}, 401)
+                return
+            self._json(self._control_state())
+            return
         if self.path.startswith("/api/setup/state"):
             self._json(SETUP_PREVIEW.state())
             return
@@ -341,6 +385,32 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         try:
             payload = self._read_json()
+            if self.path.startswith("/api/login"):
+                if not self._control_authorized(payload):
+                    self._json({"ok": False, "error": "NIP incorrect"}, 401)
+                    return
+                self._json({"ok": True, "preview": True})
+                return
+            if self.path.startswith("/api/settings"):
+                if not self._control_authorized(payload):
+                    self._json({"ok": False, "error": "Accès refusé"}, 401)
+                    return
+                with CONTROL_PREVIEW_LOCK:
+                    CONTROL_PREVIEW_SETTINGS.update(
+                        validate_settings(
+                            payload.get("settings", {}),
+                            CONTROL_PREVIEW_SETTINGS,
+                        )
+                    )
+                    updated = dict(CONTROL_PREVIEW_SETTINGS)
+                self._json({"ok": True, "settings": updated, "preview": True})
+                return
+            if self.path.startswith("/api/action"):
+                if not self._control_authorized(payload):
+                    self._json({"ok": False, "error": "Accès refusé"}, 401)
+                    return
+                self._json({"ok": True, "preview": True})
+                return
             if self.path.startswith("/api/setup/identify"):
                 self._json(SETUP_PREVIEW.identify(payload))
                 return

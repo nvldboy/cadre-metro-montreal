@@ -70,6 +70,7 @@ jobs:
         run: |
           python scripts/publish_gtfs_update.py \
             --candidate /tmp/metro_schedule_candidate.py
+          python scripts/update_package_manifest.py
 
       - name: Tester le programme
         run: python -m unittest discover -s tests -v
@@ -77,7 +78,9 @@ jobs:
       - name: Enregistrer la nouvelle période
         run: |
           git add pico/metro_schedule_data.py updates/latest.json \
-            updates/metro_schedule_data.py
+            updates/metro_schedule_data.py \
+            PICO_2_W_PRET_A_COPIER/CONTENU_A_COPIER_SUR_LE_PICO/metro_schedule_data.py \
+            PICO_2_W_PRET_A_COPIER/MANIFEST_SHA256.txt
           if git diff --cached --quiet; then
             echo "Le GTFS publié est déjà à jour."
             exit 0

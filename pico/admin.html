@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#17191a">
+  <title>Contrôle du cadre</title>
+  <style>
+    :root{color-scheme:dark;--bg:#121415;--panel:#202324;--line:#3b4042;--text:#f5f2e9;--muted:#aeb2b1;--ok:#31c977;--warn:#ffb020;--bad:#ff5264;--blue:#4bb8ff}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,sans-serif}main{width:min(900px,100%);margin:auto;padding:18px}h1,h2{margin:.2em 0}h1{font-size:1.45rem}h2{font-size:1.05rem}p{color:var(--muted)}header,.row,.actions,.head-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}header{justify-content:space-between;margin-bottom:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.metric{background:#171a1b;border-radius:10px;padding:12px}.metric small{display:block;color:var(--muted)}.metric strong{display:block;margin-top:4px;overflow-wrap:anywhere}.dot{width:10px;height:10px;border-radius:50%;background:var(--warn);display:inline-block}.dot.ok{background:var(--ok)}.dot.bad{background:var(--bad)}label{display:block;color:var(--muted);font-size:.9rem;margin:12px 0 5px}input,select,button{min-height:43px;border:1px solid var(--line);border-radius:9px;background:#171a1b;color:var(--text);padding:9px 11px;font:inherit}input,select{width:100%}input[type=range]{padding:0}input[type=checkbox]{width:22px;min-height:22px}.switch{display:flex;align-items:center;gap:9px;color:var(--text)}button{cursor:pointer}button:hover{border-color:#899093}.primary{background:#e9ecea;color:#111;border-color:#e9ecea}.danger{border-color:#713642;color:#ffacb5}.actions button{flex:1 1 175px}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.range-label{display:flex;justify-content:space-between}.notice{min-height:1.4em;color:var(--muted)}.lines{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:6px 9px;border:1px solid var(--line);border-radius:999px;font-size:.82rem}.pill.warn{border-color:var(--warn)}.pill.bad{border-color:var(--bad)}#app[hidden],#login[hidden]{display:none}.login{max-width:420px;margin:12vh auto}.language{width:auto;min-width:110px}@media(max-width:560px){main{padding:12px}.two{grid-template-columns:1fr}header{align-items:flex-start}}
+  </style>
+</head>
+<body>
+<main>
+  <section id="login" class="card login">
+    <div class="row" style="justify-content:space-between">
+      <h1 data-i18n="title">Cadre du métro</h1>
+      <select id="login-language" class="language" aria-label="Langue">
+        <option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="it">Italiano</option>
+      </select>
+    </div>
+    <p data-i18n="loginHelp">Entre le NIP du panneau pour contrôler le Pico sur ton réseau local.</p>
+    <form id="login-form">
+      <label for="pin" data-i18n="pin">NIP du panneau</label>
+      <input id="pin" type="password" inputmode="text" minlength="4" maxlength="32" autocomplete="current-password" required>
+      <button class="primary" style="width:100%;margin-top:14px" data-i18n="connect">Se connecter</button>
+    </form>
+    <p id="login-message" class="notice"></p>
+  </section>
+
+  <section id="app" hidden>
+    <header>
+      <div><h1 data-i18n="title">Cadre du métro</h1><span class="dot" id="connection-dot"></span> <span id="connection-text" data-i18n="loading">Chargement…</span></div>
+      <div class="head-actions"><select id="language" class="language" aria-label="Langue"><option value="fr">Français</option><option value="en">English</option><option value="es">Español</option><option value="it">Italiano</option></select><button id="refresh" data-i18n="refresh">Actualiser</button></div>
+    </header>
+
+    <section class="card">
+      <h2 data-i18n="system">État du système</h2>
+      <div class="grid">
+        <div class="metric"><small>Wi‑Fi</small><strong id="wifi">—</strong></div>
+        <div class="metric"><small>IP</small><strong id="ip">—</strong></div>
+        <div class="metric"><small data-i18n="time">Heure</small><strong id="time">—</strong></div>
+        <div class="metric"><small data-i18n="trains">Trains théoriques</small><strong id="trains">—</strong></div>
+        <div class="metric"><small>API STM</small><strong id="api-status">—</strong></div>
+        <div class="metric"><small>GTFS</small><strong id="gtfs">—</strong></div>
+        <div class="metric"><small data-i18n="memory">Mémoire libre</small><strong id="memory">—</strong></div>
+        <div class="metric"><small data-i18n="uptime">Fonctionnement</small><strong id="uptime">—</strong></div>
+      </div>
+      <label data-i18n="lines">Lignes</label><div class="lines" id="lines"></div>
+    </section>
+
+    <form id="settings-form" class="card">
+      <h2 data-i18n="appearance">Affichage</h2>
+      <label for="display-mode" data-i18n="mode">Mode</label>
+      <select id="display-mode"><option value="auto" data-i18n="auto">Automatique</option><option value="day" data-i18n="day">Jour forcé</option><option value="night" data-i18n="night">Nuit forcée</option><option value="off" data-i18n="off">Éteint</option></select>
+      <div class="range-label"><label for="day-brightness" data-i18n="dayBrightness">Luminosité de jour</label><output id="day-output"></output></div>
+      <input id="day-brightness" type="range" min="1" max="20" step="1">
+      <div class="range-label"><label for="night-brightness" data-i18n="nightBrightness">Maximum du mode nuit</label><output id="night-output"></output></div>
+      <input id="night-brightness" type="range" min="0.05" max="1.2" step="0.05">
+      <div class="range-label"><label for="status-brightness" data-i18n="signalBrightness">Signaux techniques</label><output id="status-output"></output></div>
+      <input id="status-brightness" type="range" min="2" max="15" step="1">
+      <label class="switch"><input id="night-enabled" type="checkbox"><span data-i18n="nightAutomatic">Autoriser le mode nuit automatique</span></label>
+      <div class="two"><div><label for="night-start" data-i18n="nightStart">Fenêtre nocturne à partir de</label><select id="night-start"></select></div><div><label for="night-end" data-i18n="nightEnd">Fin de la fenêtre</label><select id="night-end"></select></div></div>
+      <button class="primary" style="width:100%;margin-top:16px" data-i18n="save">Enregistrer les réglages</button>
+      <p id="settings-message" class="notice"></p>
+    </form>
+
+    <section class="card">
+      <h2 data-i18n="tests">Tests et commandes</h2>
+      <div class="actions">
+        <button data-action="test_pixels" data-i18n="testPixels">Point parcourant les 68 DEL</button>
+        <button data-action="test_lines" data-i18n="testLines">Tester les quatre lignes</button>
+        <button data-action="test_all" data-i18n="testAll">Illuminer toute la carte</button>
+        <button data-action="preview_night" data-i18n="previewNight">Aperçu nuit pendant 20 s</button>
+        <button data-action="refresh_stm" data-i18n="refreshStm">Relire l’état STM</button>
+        <button data-action="refresh_gtfs" data-i18n="refreshGtfs">Vérifier l’horaire GTFS</button>
+        <button data-action="reconnect_wifi" data-i18n="reconnectWifi">Reconnecter le Wi‑Fi</button>
+        <button data-action="restart" data-i18n="restart">Redémarrer le Pico</button>
+      </div>
+      <p id="action-message" class="notice"></p>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="maintenance">Maintenance</h2>
+      <p data-i18n="mappingWarning">La réinitialisation efface l’association des 68 stations et relance l’assistant Metro‑Setup.</p>
+      <button id="reset-mapping" class="danger" data-i18n="resetMapping">Réinitialiser l’association des stations</button>
+    </section>
+  </section>
+</main>
+<script>
+const translations={
+fr:{title:"Cadre du métro",loginHelp:"Entre le NIP du panneau pour contrôler le Pico sur ton réseau local.",pin:"NIP du panneau",connect:"Se connecter",loading:"Chargement…",refresh:"Actualiser",system:"État du système",time:"Heure",trains:"Trains théoriques",memory:"Mémoire libre",uptime:"Fonctionnement",lines:"Lignes",appearance:"Affichage",mode:"Mode",auto:"Automatique",day:"Jour forcé",night:"Nuit forcée",off:"Éteint",dayBrightness:"Luminosité de jour",nightBrightness:"Maximum du mode nuit",signalBrightness:"Signaux techniques",nightAutomatic:"Autoriser le mode nuit automatique",nightStart:"Fenêtre nocturne à partir de",nightEnd:"Fin de la fenêtre",save:"Enregistrer les réglages",tests:"Tests et commandes",testPixels:"Point parcourant les 68 DEL",testLines:"Tester les quatre lignes",testAll:"Illuminer toute la carte",previewNight:"Aperçu nuit pendant 20 s",refreshStm:"Relire l’état STM",refreshGtfs:"Vérifier l’horaire GTFS",reconnectWifi:"Reconnecter le Wi‑Fi",restart:"Redémarrer le Pico",maintenance:"Maintenance",mappingWarning:"La réinitialisation efface l’association des 68 stations et relance l’assistant Metro‑Setup.",resetMapping:"Réinitialiser l’association des stations",saved:"Réglages enregistrés.",sent:"Commande envoyée.",confirmRestart:"Redémarrer le Pico maintenant?",confirmMapping:"Effacer réellement l’association des 68 stations?",online:"Connecté",offline:"Injoignable",normal:"normal",slow:"ralenti",interrupted:"interrompu",current:"à jour",expired:"expiré",unknown:"inconnu",apiOk:"à jour",apiWarn:"lecture impossible",hours:"h"},
+en:{title:"Metro frame",loginHelp:"Enter the control-panel PIN to manage the Pico on your local network.",pin:"Control-panel PIN",connect:"Sign in",loading:"Loading…",refresh:"Refresh",system:"System status",time:"Time",trains:"Theoretical trains",memory:"Free memory",uptime:"Uptime",lines:"Lines",appearance:"Display",mode:"Mode",auto:"Automatic",day:"Force day",night:"Force night",off:"Off",dayBrightness:"Day brightness",nightBrightness:"Night-mode maximum",signalBrightness:"Technical signals",nightAutomatic:"Allow automatic night mode",nightStart:"Night window starts at",nightEnd:"Window ends at",save:"Save settings",tests:"Tests and commands",testPixels:"Run a dot through 68 LEDs",testLines:"Test all four lines",testAll:"Light the whole map",previewNight:"Preview night for 20 s",refreshStm:"Refresh STM status",refreshGtfs:"Check GTFS schedule",reconnectWifi:"Reconnect Wi-Fi",restart:"Restart Pico",maintenance:"Maintenance",mappingWarning:"Resetting erases the 68-station mapping and starts Metro-Setup again.",resetMapping:"Reset station mapping",saved:"Settings saved.",sent:"Command sent.",confirmRestart:"Restart the Pico now?",confirmMapping:"Really erase the 68-station mapping?",online:"Connected",offline:"Unreachable",normal:"normal",slow:"slow",interrupted:"interrupted",current:"current",expired:"expired",unknown:"unknown",apiOk:"current",apiWarn:"read failed",hours:"h"},
+es:{title:"Marco del metro",loginHelp:"Introduce el PIN del panel para controlar el Pico en tu red local.",pin:"PIN del panel",connect:"Conectar",loading:"Cargando…",refresh:"Actualizar",system:"Estado del sistema",time:"Hora",trains:"Trenes teóricos",memory:"Memoria libre",uptime:"Tiempo activo",lines:"Líneas",appearance:"Pantalla",mode:"Modo",auto:"Automático",day:"Forzar día",night:"Forzar noche",off:"Apagado",dayBrightness:"Brillo diurno",nightBrightness:"Máximo nocturno",signalBrightness:"Señales técnicas",nightAutomatic:"Permitir modo nocturno automático",nightStart:"La ventana nocturna empieza a",nightEnd:"La ventana termina a",save:"Guardar ajustes",tests:"Pruebas y comandos",testPixels:"Recorrer los 68 LED",testLines:"Probar las cuatro líneas",testAll:"Iluminar todo el mapa",previewNight:"Vista nocturna por 20 s",refreshStm:"Actualizar estado STM",refreshGtfs:"Comprobar horario GTFS",reconnectWifi:"Reconectar Wi-Fi",restart:"Reiniciar Pico",maintenance:"Mantenimiento",mappingWarning:"El reinicio borra la asociación de 68 estaciones e inicia Metro-Setup.",resetMapping:"Restablecer estaciones",saved:"Ajustes guardados.",sent:"Comando enviado.",confirmRestart:"¿Reiniciar el Pico ahora?",confirmMapping:"¿Borrar realmente las 68 estaciones?",online:"Conectado",offline:"Inaccesible",normal:"normal",slow:"lento",interrupted:"interrumpido",current:"actualizado",expired:"caducado",unknown:"desconocido",apiOk:"actualizada",apiWarn:"lectura fallida",hours:"h"},
+it:{title:"Quadro della metro",loginHelp:"Inserisci il PIN del pannello per controllare il Pico sulla rete locale.",pin:"PIN del pannello",connect:"Accedi",loading:"Caricamento…",refresh:"Aggiorna",system:"Stato del sistema",time:"Ora",trains:"Treni teorici",memory:"Memoria libera",uptime:"Tempo attivo",lines:"Linee",appearance:"Display",mode:"Modalità",auto:"Automatica",day:"Forza giorno",night:"Forza notte",off:"Spento",dayBrightness:"Luminosità diurna",nightBrightness:"Massimo notturno",signalBrightness:"Segnali tecnici",nightAutomatic:"Consenti modalità notte automatica",nightStart:"La finestra notturna inizia alle",nightEnd:"La finestra termina alle",save:"Salva impostazioni",tests:"Test e comandi",testPixels:"Percorri i 68 LED",testLines:"Testa le quattro linee",testAll:"Illumina tutta la mappa",previewNight:"Anteprima notte per 20 s",refreshStm:"Aggiorna stato STM",refreshGtfs:"Controlla orario GTFS",reconnectWifi:"Riconnetti Wi-Fi",restart:"Riavvia Pico",maintenance:"Manutenzione",mappingWarning:"Il ripristino cancella l’associazione delle 68 stazioni e avvia Metro-Setup.",resetMapping:"Ripristina le stazioni",saved:"Impostazioni salvate.",sent:"Comando inviato.",confirmRestart:"Riavviare il Pico ora?",confirmMapping:"Cancellare davvero le 68 stazioni?",online:"Connesso",offline:"Non raggiungibile",normal:"normale",slow:"rallentata",interrupted:"interrotta",current:"aggiornato",expired:"scaduto",unknown:"sconosciuto",apiOk:"aggiornata",apiWarn:"lettura fallita",hours:"h"}}
+let language=(localStorage.getItem("metroAdminLanguage")||(navigator.languages||[navigator.language||"fr"])[0]||"fr").slice(0,2);if(!translations[language])language="fr";let pin=sessionStorage.getItem("metroAdminPin")||"";const $=id=>document.getElementById(id),t=key=>translations[language][key]||translations.fr[key]||key;
+function translate(){document.documentElement.lang=language;document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));$("language").value=language;$("login-language").value=language}
+function setLanguage(value){language=value;localStorage.setItem("metroAdminLanguage",value);translate()}
+$("language").onchange=e=>setLanguage(e.target.value);$("login-language").onchange=e=>setLanguage(e.target.value);
+for(let h=0;h<24;h++){["night-start","night-end"].forEach(id=>{const option=document.createElement("option");option.value=h;option.textContent=String(h).padStart(2,"0")+":00";$(id).appendChild(option)})}
+function updateOutputs(){$("day-output").textContent=$("day-brightness").value+" %";$("night-output").textContent=Number($("night-brightness").value).toFixed(2)+" %";$("status-output").textContent=$("status-brightness").value+" %"}document.querySelectorAll('input[type="range"]').forEach(input=>input.oninput=updateOutputs);
+async function api(path,options={}){options.headers={...(options.headers||{}),"X-Control-Pin":pin};if(options.body)options.headers["Content-Type"]="application/json";const response=await fetch(path,options);const data=await response.json();if(!response.ok)throw new Error(data.error||response.statusText);return data}
+function fillSettings(s){$("display-mode").value=s.display_mode;$("day-brightness").value=Math.round(s.day_brightness*100);$("night-brightness").value=(s.night_brightness*60).toFixed(2);$("status-brightness").value=Math.round(s.status_brightness*100);$("night-enabled").checked=s.night_enabled;$("night-start").value=s.night_start_hour;$("night-end").value=s.night_end_hour;updateOutputs()}
+function duration(seconds){const h=Math.floor(seconds/3600),m=Math.floor(seconds%3600/60);return h+" "+t("hours")+" "+m+" min"}
+async function refresh(){try{const s=await api("/api/state");$("connection-dot").className="dot ok";$("connection-text").textContent=t("online");$("wifi").textContent=s.wifi.ssid||"—";$("ip").textContent=s.wifi.ip||"—";$("time").textContent=s.local_time;$("trains").textContent=s.trains;$("api-status").textContent=s.api_failures?`${t("apiWarn")} (${s.api_failures})`:t("apiOk");$("gtfs").textContent=t(s.gtfs_current?"current":"expired");$("memory").textContent=Math.round(s.memory_free/1024)+" ko";$("uptime").textContent=duration(s.uptime_seconds);$("lines").innerHTML="";Object.entries(s.lines).forEach(([name,state])=>{const span=document.createElement("span");span.className="pill "+(state==="slow"?"warn":state==="interrupted"?"bad":"");span.textContent=name+" · "+t(state==="ok"?"normal":state);$("lines").appendChild(span)});fillSettings(s.settings)}catch(error){$("connection-dot").className="dot bad";$("connection-text").textContent=t("offline")}}
+$("login-form").onsubmit=async event=>{event.preventDefault();pin=$("pin").value;try{await api("/api/login",{method:"POST",body:JSON.stringify({pin})});sessionStorage.setItem("metroAdminPin",pin);$("login").hidden=true;$("app").hidden=false;await refresh()}catch(error){$("login-message").textContent=error.message}};
+$("settings-form").onsubmit=async event=>{event.preventDefault();const settings={display_mode:$("display-mode").value,day_brightness:Number($("day-brightness").value)/100,night_brightness:Number($("night-brightness").value)/60,status_brightness:Number($("status-brightness").value)/100,night_enabled:$("night-enabled").checked,night_start_hour:Number($("night-start").value),night_end_hour:Number($("night-end").value)};try{await api("/api/settings",{method:"POST",body:JSON.stringify({settings})});$("settings-message").textContent=t("saved");setTimeout(()=>$("settings-message").textContent="",2500)}catch(error){$("settings-message").textContent=error.message}};
+async function action(name,extra={}){if(name==="restart"&&!confirm(t("confirmRestart")))return;try{await api("/api/action",{method:"POST",body:JSON.stringify({action:name,...extra})});$("action-message").textContent=t("sent");setTimeout(()=>$("action-message").textContent="",2500)}catch(error){$("action-message").textContent=error.message}}
+document.querySelectorAll("[data-action]").forEach(button=>button.onclick=()=>action(button.dataset.action));$("reset-mapping").onclick=()=>{if(confirm(t("confirmMapping")))action("reset_mapping",{confirm:true})};$("refresh").onclick=refresh;
+translate();if(pin){$("login").hidden=true;$("app").hidden=false;refresh()}setInterval(()=>{if(!$("app").hidden)refresh()},5000);
+</script>
+</body>
+</html>

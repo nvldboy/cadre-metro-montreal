@@ -11,7 +11,15 @@ except ImportError:
 STM_HOST = "api.stm.info"
 STM_PATH = "/pub/od/i3/v2/messages/etatservice"
 STM_CONNECT_HOST = STM_HOST
-STREAM_READ_SIZE = 1024
+_STM_ETAG = None
+# Des blocs de 4 ko réduisent fortement le nombre d'attentes réseau tout en
+# restant modestes pour la mémoire disponible du Pico 2 W.
+STREAM_READ_SIZE = 4096
+# Le filtre JSON est volontairement découpé plus finement que la lecture
+# réseau. Sur le Pico, analyser 4 ko octet par octet peut prendre plusieurs
+# centaines de millisecondes; rendre la main tous les 256 octets maintient
+# l'affichage fluide pendant la grosse réponse STM.
+FILTER_SLICE_SIZE = 256
 MAX_ALERT_BYTES = 8192
 
 _ALERTS_TOKEN = b'"alerts"'
@@ -21,6 +29,22 @@ _METRO_ROUTE_BYTES = (49, 50, 52, 53)  # 1, 2, 4 et 5
 
 class AsyncStmApiError(Exception):
     pass
+
+
+async def _yield_to_animation():
+    """Laisse les tâches DEL s'exécuter pendant le filtrage de la réponse."""
+    sleep_ms = getattr(asyncio, "sleep_ms", None)
+    if sleep_ms is not None:
+        await sleep_ms(0)
+    else:
+        await asyncio.sleep(0)
+
+
+async def _feed_stream_data(stream_filter, data):
+    view = memoryview(data)
+    for offset in range(0, len(data), FILTER_SLICE_SIZE):
+        stream_filter.feed(view[offset:offset + FILTER_SLICE_SIZE])
+        await _yield_to_animation()
 
 
 class MetroAlertStreamFilter:
@@ -183,7 +207,7 @@ async def _feed_exactly(reader, size, stream_filter):
         data = await reader.read(min(STREAM_READ_SIZE, remaining))
         if not data:
             raise AsyncStmApiError("Réponse HTTP tronquée")
-        stream_filter.feed(data)
+        await _feed_stream_data(stream_filter, data)
         remaining -= len(data)
 
 
@@ -211,7 +235,7 @@ async def _read_until_close(reader, stream_filter):
         data = await reader.read(STREAM_READ_SIZE)
         if not data:
             break
-        stream_filter.feed(data)
+        await _feed_stream_data(stream_filter, data)
 
 
 async def _close_writer(writer):
@@ -223,6 +247,7 @@ async def _close_writer(writer):
 
 async def fetch_service_status_async(api_key):
     """Effectue la requête sans bloquer la boucle uasyncio."""
+    global _STM_ETAG
     if not api_key or api_key == "CLE_API_STM":
         raise AsyncStmApiError("La clé API STM n'est pas configurée")
 
@@ -235,6 +260,11 @@ async def fetch_service_status_async(api_key):
             ssl=True,
             server_hostname=STM_HOST,
         )
+        conditional_header = (
+            "If-None-Match: {}\r\n".format(_STM_ETAG)
+            if _STM_ETAG
+            else ""
+        )
         request = (
             "GET {} HTTP/1.1\r\n"
             "Host: {}\r\n"
@@ -242,8 +272,9 @@ async def fetch_service_status_async(api_key):
             "Accept: application/json\r\n"
             "Accept-Encoding: identity\r\n"
             "User-Agent: metro-montreal-led-pico/1.0\r\n"
+            "{}"
             "Connection: close\r\n\r\n"
-        ).format(STM_PATH, STM_HOST, api_key)
+        ).format(STM_PATH, STM_HOST, api_key, conditional_header)
         writer.write(request.encode())
         drain = getattr(writer, "drain", None)
         if drain is not None:
@@ -261,13 +292,17 @@ async def fetch_service_status_async(api_key):
             if line in (b"", b"\r\n", b"\n"):
                 break
             key, value = line.decode().split(":", 1)
-            headers[key.lower().strip()] = value.strip().lower()
+            # Les noms d'en-tête sont insensibles à la casse, mais la valeur
+            # opaque d'un ETag ne doit jamais être modifiée.
+            headers[key.lower().strip()] = value.strip()
 
+        if status_code == 304:
+            return None
         if status_code != 200:
             raise AsyncStmApiError("Réponse HTTP STM: {}".format(status_code))
 
         stream_filter = MetroAlertStreamFilter()
-        if headers.get("transfer-encoding") == "chunked":
+        if headers.get("transfer-encoding", "").lower() == "chunked":
             await _read_chunked(reader, stream_filter)
         elif "content-length" in headers:
             await _read_content_length(
@@ -278,7 +313,11 @@ async def fetch_service_status_async(api_key):
         else:
             await _read_until_close(reader, stream_filter)
 
-        return stream_filter.result()
+        result = stream_filter.result()
+        response_etag = headers.get("etag")
+        if response_etag:
+            _STM_ETAG = response_etag
+        return result
     finally:
         if writer is not None:
             await _close_writer(writer)

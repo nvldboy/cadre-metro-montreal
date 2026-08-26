@@ -3,13 +3,17 @@ import json
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 PICO = Path(__file__).resolve().parents[1] / "pico"
 sys.path.insert(0, str(PICO))
 
+import async_stm_api
 from async_stm_api import (
+    FILTER_SLICE_SIZE,
     STREAM_READ_SIZE,
     MetroAlertStreamFilter,
+    fetch_service_status_async,
     _read_chunked,
 )
 
@@ -48,6 +52,38 @@ class FakeChunkedReader:
         if size == 2 and self.position == len(self.body):
             return b"\r\n"
         raise AssertionError("Lecture exacte inattendue: {}".format(size))
+
+
+class FakeHttpReader:
+    def __init__(self, status, headers=(), body=b""):
+        self.lines = [status] + list(headers) + [b"\r\n"]
+        self.body = body
+        self.position = 0
+
+    async def readline(self):
+        return self.lines.pop(0)
+
+    async def read(self, size):
+        chunk = self.body[self.position:self.position + size]
+        self.position += len(chunk)
+        return chunk
+
+
+class FakeHttpWriter:
+    def __init__(self):
+        self.data = bytearray()
+
+    def write(self, data):
+        self.data.extend(data)
+
+    async def drain(self):
+        return None
+
+    def close(self):
+        return None
+
+    async def wait_closed(self):
+        return None
 
 
 class MetroAlertStreamFilterTests(unittest.TestCase):
@@ -101,6 +137,76 @@ class MetroAlertStreamFilterTests(unittest.TestCase):
         result = stream_filter.result()
         self.assertLessEqual(reader.max_read, STREAM_READ_SIZE)
         self.assertEqual(len(result["alerts"]), 1)
+
+    def test_large_buffered_response_yields_to_the_animation(self):
+        alerts = [alert("24", "Autobus détourné")] * 300
+        alerts.append(alert("2", "Service normal du métro"))
+        body = json.dumps(
+            {"alerts": alerts},
+            separators=(",", ":"),
+        ).encode()
+
+        async def scenario():
+            running = True
+            heartbeat_count = 0
+
+            async def heartbeat():
+                nonlocal heartbeat_count
+                while running:
+                    heartbeat_count += 1
+                    await asyncio.sleep(0)
+
+            heartbeat_task = asyncio.create_task(heartbeat())
+            stream_filter = MetroAlertStreamFilter()
+            await _read_chunked(FakeChunkedReader(body), stream_filter)
+            running = False
+            await heartbeat_task
+            return heartbeat_count, stream_filter.result()
+
+        heartbeat_count, result = asyncio.run(scenario())
+        self.assertGreater(
+            heartbeat_count,
+            len(body) // (FILTER_SLICE_SIZE * 2),
+        )
+        self.assertEqual(len(result["alerts"]), 1)
+
+    def test_etag_turns_an_unchanged_refresh_into_a_small_304(self):
+        body = json.dumps(
+            {"alerts": [alert("2")]},
+            separators=(",", ":"),
+        ).encode()
+        readers = [
+            FakeHttpReader(
+                b"HTTP/1.1 200 OK\r\n",
+                (
+                    b'ETag: W/"metro-1"\r\n',
+                    "Content-Length: {}\r\n".format(len(body)).encode(),
+                ),
+                body,
+            ),
+            FakeHttpReader(b"HTTP/1.1 304 Not Modified\r\n"),
+        ]
+        writers = [FakeHttpWriter(), FakeHttpWriter()]
+
+        async def fake_connection(*args, **kwargs):
+            return readers.pop(0), writers[len(writers) - len(readers) - 1]
+
+        async def scenario():
+            async_stm_api._STM_ETAG = None
+            with patch.object(
+                async_stm_api.asyncio,
+                "open_connection",
+                new=fake_connection,
+            ):
+                first = await fetch_service_status_async("test-key")
+                second = await fetch_service_status_async("test-key")
+            return first, second
+
+        first, second = asyncio.run(scenario())
+        self.assertEqual(len(first["alerts"]), 1)
+        self.assertIsNone(second)
+        self.assertNotIn(b"If-None-Match", writers[0].data)
+        self.assertIn(b'If-None-Match: W/"metro-1"', writers[1].data)
 
 
 if __name__ == "__main__":

@@ -42,11 +42,24 @@ LINE_STATIONS = {
     "blue": BLUE,
 }
 
+# Couleurs RVB de référence relevées dans le plan officiel du métro publié
+# par la STM en mai 2026 (PM-C2436-B_FRA_WEB).
+STM_SCREEN_COLORS = {
+    "green": (0, 150, 81),       # #009651
+    "orange": (216, 127, 63),    # #D87F3F
+    "yellow": (249, 219, 79),    # #F9DB4F
+    "blue": (0, 114, 171),       # #0072AB
+}
+
+# Palette calibrée pour les pixels WS2811 de 12 mm. Leurs primaires sont
+# beaucoup plus saturées que celles d'un écran : reprendre les valeurs RVB
+# ci-dessus rend le bleu et le vert cyan, et l'orange et le jaune trop blancs.
+# Ces rapports compensent ce comportement tout en conservant l'identité STM.
 LINE_COLORS = {
-    "green": (0, 166, 81),
-    "orange": (245, 130, 32),
-    "yellow": (255, 210, 0),
-    "blue": (0, 114, 188),
+    "green": (0, 255, 10),
+    "orange": (255, 65, 0),
+    "yellow": (255, 170, 0),
+    "blue": (0, 8, 255),
 }
 
 # Ordre de câblage proposé. Cette table est volontairement explicite pour

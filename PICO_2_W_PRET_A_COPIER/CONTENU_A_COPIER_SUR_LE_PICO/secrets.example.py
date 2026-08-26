@@ -1,4 +1,4 @@
-"""Renommer ce fichier secrets.py et remplacer les valeurs."""
+"""Copier ce fichier sous le nom secrets.py et remplacer les valeurs."""
 
 WIFI_SSID = "NOM_DU_WIFI"
 WIFI_PASSWORD = "MOT_DE_PASSE_WIFI"
@@ -11,6 +11,11 @@ WIFI_NETWORKS = [
 ]
 
 STM_API_KEY = "CLE_API_STM"
+
+# Panneau Web local: http://ADRESSE_IP_DU_PICO/admin
+# Choisir de 4 à 32 caractères. La valeur par défaut est "metro68" si cette
+# ligne est absente, mais il est préférable de la personnaliser.
+CONTROL_PANEL_PIN = "CHOISIR_UN_NIP"
 
 # Facultatif : Transit v4 peut compléter les alertes STM.
 TRANSIT_API_KEY = ""

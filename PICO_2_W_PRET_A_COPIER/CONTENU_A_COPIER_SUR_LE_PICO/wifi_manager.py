@@ -74,7 +74,13 @@ def _disconnect(wlan):
         pass
 
 
-def connect(ssid, password, wlan=None):
+def _notify_progress(callback, state, elapsed_ms=0, attempt=0):
+    if callback is None:
+        return
+    callback(state, elapsed_ms, attempt)
+
+
+def connect(ssid, password, wlan=None, progress_callback=None, attempt=0):
     """Se connecte à un réseau précis."""
     if wlan is None:
         wlan = network.WLAN(network.STA_IF)
@@ -88,7 +94,14 @@ def connect(ssid, password, wlan=None):
     started = time.ticks_ms()
 
     while not wlan.isconnected():
-        if time.ticks_diff(time.ticks_ms(), started) > WIFI_TIMEOUT_SECONDS * 1000:
+        elapsed_ms = time.ticks_diff(time.ticks_ms(), started)
+        _notify_progress(
+            progress_callback,
+            "wifi_connecting",
+            elapsed_ms,
+            attempt,
+        )
+        if elapsed_ms > WIFI_TIMEOUT_SECONDS * 1000:
             _disconnect(wlan)
             raise OSError("Délai de connexion Wi-Fi dépassé")
         time.sleep_ms(200)
@@ -97,7 +110,7 @@ def connect(ssid, password, wlan=None):
     return wlan
 
 
-def connect_any(networks):
+def connect_any(networks, progress_callback=None):
     """Utilise le premier réseau configuré qui est disponible."""
     configured = normalize_networks(networks)
     if not configured:
@@ -111,12 +124,26 @@ def connect_any(networks):
     visible = scan_visible_ssids(wlan)
     ordered = prioritize_networks(configured, visible)
     last_error = None
-    for ssid, password in ordered:
+    for attempt, (ssid, password) in enumerate(ordered):
         try:
-            return connect(ssid, password, wlan=wlan)
+            if progress_callback is None:
+                return connect(ssid, password, wlan=wlan)
+            return connect(
+                ssid,
+                password,
+                wlan=wlan,
+                progress_callback=progress_callback,
+                attempt=attempt,
+            )
         except Exception as error:
             last_error = error
             print("Réseau Wi-Fi inutilisable:", ssid, error)
+            _notify_progress(
+                progress_callback,
+                "wifi_retry",
+                0,
+                attempt + 1,
+            )
 
     raise OSError(
         "Aucun réseau Wi-Fi configuré n'est accessible: {}".format(
@@ -133,7 +160,13 @@ async def _sleep_ms(milliseconds):
         await asyncio.sleep(milliseconds / 1000)
 
 
-async def _connect_async(wlan, ssid, password):
+async def _connect_async(
+    wlan,
+    ssid,
+    password,
+    progress_callback=None,
+    attempt=0,
+):
     wlan.active(True)
     if wlan.isconnected():
         return wlan
@@ -144,7 +177,14 @@ async def _connect_async(wlan, ssid, password):
     started = time.ticks_ms()
 
     while not wlan.isconnected():
-        if time.ticks_diff(time.ticks_ms(), started) > WIFI_TIMEOUT_SECONDS * 1000:
+        elapsed_ms = time.ticks_diff(time.ticks_ms(), started)
+        _notify_progress(
+            progress_callback,
+            "wifi_connecting",
+            elapsed_ms,
+            attempt,
+        )
+        if elapsed_ms > WIFI_TIMEOUT_SECONDS * 1000:
             _disconnect(wlan)
             raise OSError("Délai de connexion Wi-Fi dépassé")
         await _sleep_ms(200)
@@ -153,7 +193,7 @@ async def _connect_async(wlan, ssid, password):
     return wlan
 
 
-async def connect_any_async(networks):
+async def connect_any_async(networks, progress_callback=None):
     """Version asynchrone utilisée pour se reconnecter sans figer les DEL."""
     configured = normalize_networks(networks)
     if not configured:
@@ -167,12 +207,24 @@ async def connect_any_async(networks):
     visible = scan_visible_ssids(wlan)
     ordered = prioritize_networks(configured, visible)
     last_error = None
-    for ssid, password in ordered:
+    for attempt, (ssid, password) in enumerate(ordered):
         try:
-            return await _connect_async(wlan, ssid, password)
+            return await _connect_async(
+                wlan,
+                ssid,
+                password,
+                progress_callback=progress_callback,
+                attempt=attempt,
+            )
         except Exception as error:
             last_error = error
             print("Réseau Wi-Fi inutilisable:", ssid, error)
+            _notify_progress(
+                progress_callback,
+                "wifi_retry",
+                0,
+                attempt + 1,
+            )
 
     raise OSError(
         "Aucun réseau Wi-Fi configuré n'est accessible: {}".format(

@@ -44,7 +44,8 @@ sys.modules["neopixel"] = neopixel
 
 import led_display
 from led_display import MetroDisplay
-from stations import STATION_INDEX
+from stations import LINE_COLORS, STM_SCREEN_COLORS, STATION_INDEX
+from status_animation import GTFS_UPDATING
 from stm_status import STOPPED, empty_status
 
 led_display.time.ticks_diff = lambda first, second: first - second
@@ -67,8 +68,31 @@ class LedDisplayMappingTests(unittest.TestCase):
 
         logical_index = STATION_INDEX["Radisson"]
         physical_index = logical_to_physical[logical_index]
-        self.assertEqual(display.pixels[physical_index], (51, 0, 0))
-        self.assertNotEqual(display.pixels[logical_index], (51, 0, 0))
+        # La guirlande RGB reçoit le tuple compensé GRB du pilote NeoPixel.
+        self.assertEqual(display.pixels[physical_index], (0, 51, 0))
+        self.assertNotEqual(display.pixels[logical_index], (0, 51, 0))
+
+    def test_keeps_colors_from_the_official_2026_stm_map_as_reference(self):
+        self.assertEqual(
+            STM_SCREEN_COLORS,
+            {
+                "green": (0, 150, 81),
+                "orange": (216, 127, 63),
+                "yellow": (249, 219, 79),
+                "blue": (0, 114, 171),
+            },
+        )
+
+    def test_uses_the_ws2811_calibrated_palette_for_the_leds(self):
+        self.assertEqual(
+            LINE_COLORS,
+            {
+                "green": (0, 255, 10),
+                "orange": (255, 65, 0),
+                "yellow": (255, 170, 0),
+                "blue": (0, 8, 255),
+            },
+        )
 
     def test_rejects_out_of_range_physical_indexes(self):
         invalid = list(range(68))
@@ -84,7 +108,53 @@ class LedDisplayMappingTests(unittest.TestCase):
         display.render(status, now_ms=0, night_mode=True)
 
         physical_index = STATION_INDEX["Radisson"]
-        self.assertEqual(display.pixels[physical_index], (7, 0, 0))
+        self.assertEqual(display.pixels[physical_index], (0, 2, 0))
+
+    def test_line_interruption_and_station_closure_use_distinct_rhythms(self):
+        station_name = "Radisson"
+        index = STATION_INDEX[station_name]
+
+        line_display = MetroDisplay(self.stations_map)
+        line_status = empty_status()
+        line_status["lines"]["green"] = STOPPED
+        line_display.render(line_status, now_ms=300)
+
+        station_display = MetroDisplay(self.stations_map)
+        station_status = empty_status()
+        station_status["stations"][station_name] = STOPPED
+        station_display.render(station_status, now_ms=300)
+
+        self.assertEqual(line_display.pixels[index], (0, 0, 0))
+        self.assertEqual(station_display.pixels[index], (0, 51, 0))
+
+    def test_technical_overlay_never_hides_an_interruption(self):
+        display = MetroDisplay(self.stations_map)
+        status = empty_status()
+        status["lines"]["green"] = STOPPED
+
+        display.render(
+            status,
+            now_ms=0,
+            train_levels=[0.0] * 68,
+            technical_state=GTFS_UPDATING,
+            technical_started_ms=0,
+        )
+
+        index = STATION_INDEX["Radisson"]
+        self.assertEqual(display.pixels[index], (0, 51, 0))
+
+    def test_unoccupied_day_stations_are_off(self):
+        display = MetroDisplay(self.stations_map)
+        train_levels = [0.0] * 68
+
+        display.render(
+            empty_status(),
+            now_ms=0,
+            train_levels=train_levels,
+            night_mode=False,
+        )
+
+        self.assertTrue(all(color == (0, 0, 0) for color in display.pixels.values))
 
     def test_night_ambient_breathes_slowly(self):
         status = empty_status()
@@ -110,6 +180,7 @@ class LedDisplayMappingTests(unittest.TestCase):
             sum(bright_display.pixels[index]),
             sum(dim_display.pixels[index]),
         )
+        self.assertLessEqual(max(bright_display.pixels[index]), 1)
 
 
 if __name__ == "__main__":

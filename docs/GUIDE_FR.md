@@ -18,16 +18,19 @@ utilisant :
 
 | Apparence | Signification |
 |---|---|
-| Couleur de ligne très faible | Station sans train théorique à proximité |
-| Couleur de ligne qui augmente puis diminue | Passage estimé d’un train |
-| Deux stations voisines partiellement allumées | Train estimé entre ces deux stations |
+| Station éteinte | Aucun train théorique à proximité |
+| Une station vivement colorée | Présence estimée d’un train |
+| Point qui saute à la station suivante | Déplacement estimé d’un train, représenté par une seule DEL nette |
+| Changements répartis sur le réseau | Chaque rame suit son propre horaire légèrement désynchronisé |
 | Blanc | Station de correspondance desservie par plusieurs lignes |
 | Pulsation ambre | Service ralenti ou perturbé |
-| Clignotement rouge | Ligne interrompue ou station fermée |
-| Magenta fixe au démarrage | Configuration Wi‑Fi absente ou incomplète |
-| Séquence blanche, une DEL à la fois | Autotest et vérification de l’ordre des DEL |
+| Deux éclats rouges | Ligne interrompue |
+| Trois éclats rouges sur une DEL | Station fermée |
+| Magenta long–court–court | Configuration absente ou invalide |
+| Point blanc parcourant la chaîne | Mise sous tension et autotest |
+| Chenillard cyan | Connexion ou reconnexion Wi‑Fi |
 | Une DEL blanche clignote et le Wi‑Fi `Metro-Setup` apparaît | Assistant de première configuration |
-| Respiration très lente après le dernier train | Mode nuit automatique |
+| Respiration à environ 0,1–0,45 % après le dernier train | Mode nuit automatique |
 
 Lorsqu’une ligne est interrompue, ses trains théoriques sont immédiatement
 retirés de l’animation. Ses stations clignotent en rouge pendant que les autres
@@ -401,16 +404,24 @@ Le moteur détermine les voyages GTFS actifs à l’heure locale de Montréal.
 Pour un train situé entre la station A et la station B :
 
 ```text
-départ de A : A = 100 %, B = 0 %
-au milieu   : A = 50 %,  B = 50 %
-arrivée à B : A = 0 %,   B = 100 %
+première moitié du trajet : A vivement allumée, B éteinte
+milieu du trajet          : le point saute nettement de A vers B
+seconde moitié du trajet  : A éteinte, B vivement allumée
 ```
 
-Comme il n’existe pas de pixel entre deux stations, le déplacement est
-représenté par un transfert progressif de luminosité.
+Comme le cadre ne possède pas de pixel entre deux stations, chaque rame est
+représentée par une seule DEL à pleine intensité. Le saut net au milieu du temps
+de parcours est beaucoup plus facile à distinguer qu’un changement subtil de
+luminosité. Chaque rame possède sa propre phase; les sauts sont donc indépendants
+et la carte reste visiblement active sans dépendre d'une séquence de test.
 
-Les stations sans train restent visibles à 15 % du niveau maximal. La
-luminosité globale est limitée à 20 % dans `config.py`.
+Les stations sans train sont complètement éteintes. La luminosité globale des
+stations occupées reste limitée à 20 % dans `config.py`.
+
+Comme le GTFS statique arrondit souvent les passages à la minute, chaque voyage
+reçoit une petite variation déterministe pouvant atteindre 28 secondes. Cette
+variation demeure stable après un redémarrage et évite que plusieurs trains
+avancent en bloc.
 
 ### Mode nuit
 
@@ -423,8 +434,9 @@ Par défaut :
 - il se termine dès le premier train du matin, ou au plus tard à 6 h;
 - toute la carte respire lentement dans ses couleurs de ligne;
 - un cycle complet dure 18 secondes;
-- la luminosité oscille doucement entre environ 0,6 % et 3 %;
-- les perturbations restent visibles à seulement 3 % pendant la fermeture.
+- la luminosité oscille doucement entre environ 0,1 % et 0,45 %;
+- les perturbations restent visibles à seulement 0,75 % au maximum pendant la
+  fermeture.
 
 Une prolongation d’horaire repousse donc automatiquement le mode nuit. Une
 interruption générale du réseau ne déclenche pas le mode nuit : le programme
@@ -463,8 +475,9 @@ Les stations concernées pulsent en ambre. Une pulsation complète dure environ
 
 ### Interruption
 
-Toutes les stations de la ligne concernée clignotent en rouge, avec une période
-d’environ 700 ms.
+Toutes les stations de la ligne concernée produisent deux éclats rouges rapides,
+suivis d’une pause. Ce motif dure 2,4 secondes et ne peut pas être confondu avec
+la fermeture d’une seule station.
 
 Les trains théoriques de cette ligne sont retirés immédiatement. Les autres
 lignes continuent leur mouvement.
@@ -472,15 +485,42 @@ lignes continuent leur mouvement.
 ### Fermeture ou problème à une station
 
 Si une alerte de service cible clairement une station, seule cette station
-reçoit l’effet rouge ou ambre correspondant.
+reçoit l’effet correspondant. Une fermeture produit trois petits éclats rouges;
+un ralentissement conserve la respiration ambre.
 
 Les avis concernant uniquement un accès fermé, un arrêt d’autobus déplacé ou
 des travaux sans effet sur le service métro sont ignorés.
 
 ### Erreur de configuration
 
-Si le Wi‑Fi est absent ou contient encore les valeurs d’exemple, les 68 DEL
-deviennent magenta et la DEL intégrée du Pico clignote.
+Si le Wi‑Fi est absent ou contient encore les valeurs d’exemple, trois DEL
+magenta produisent un motif long–court–court. Une erreur fatale utilise plutôt
+le motif magenta–blanc–magenta.
+
+### Langage des états techniques
+
+| État | Animation |
+|---|---|
+| Mise sous tension | Point blanc parcourant les 68 DEL |
+| Vérification des lignes | Verte, orange, jaune et bleue successivement |
+| Connexion Wi‑Fi | Chenillard cyan; sa direction change au réseau suivant |
+| Wi‑Fi connecté | Deux impulsions cyan |
+| Synchronisation de l’heure | Quatre repères blancs en mouvement |
+| Chargement de l’horaire | Les quatre lignes apparaissent successivement |
+| Système prêt | Révélation colorée de toute la carte, puis affichage des trains |
+| Wi‑Fi perdu | Court chenillard cyan toutes les 10 secondes; les trains continuent |
+| API STM inaccessible trois fois | Deux repères cyan toutes les 30 secondes |
+| Horaire GTFS expiré | Double balayage ambre toutes les 30 secondes |
+| Mise à jour GTFS | Progression cyan le long de la chaîne |
+| Mise à jour réussie | Ouverture blanche depuis le centre, puis redémarrage |
+| Échec de mise à jour | Double signal magenta et ambre; l’ancien horaire demeure |
+| Protection électrique | Trois signaux ambre; le limiteur reste prioritaire |
+| Reprise du service | Balayage unique dans la couleur de la ligne rétablie |
+
+Les interruptions STM ont priorité sur les ralentissements, qui ont priorité
+sur les avis techniques. Un avertissement Wi‑Fi ou GTFS ne peut donc jamais
+recouvrir une ligne interrompue. Les avis techniques sont supprimés pendant le
+mode nuit, sauf l’erreur critique qui empêche le programme de démarrer.
 
 ### DEL intégrée du Pico
 
@@ -502,16 +542,20 @@ Deux tâches s’exécutent simultanément :
 - cadence : 40 ms, soit environ 25 images par seconde;
 - calcule l’heure locale de Montréal;
 - trouve les trains théoriques actifs;
-- interpole leur position;
+- calcule leur progression sur chaque segment;
+- place chaque train sur une seule station et le fait sauter à mi-segment;
 - retire les trains des lignes interrompues;
 - rafraîchit les 68 pixels.
 
 ### `api_monitor_loop`
 
 - s’exécute immédiatement au démarrage;
-- recommence toutes les 60 secondes;
+- recommence toutes les 60 secondes après le début de la requête précédente;
 - utilise une connexion HTTPS asynchrone;
-- limite chaque tentative à 20 secondes;
+- accepte jusqu’à 90 secondes pour parcourir une première grosse réponse STM;
+- utilise ensuite l’ETag du serveur pour recevoir rapidement « inchangé »;
+- réessaie après 15 secondes en cas d’échec et renouvelle la résolution DNS
+  seulement après une erreur de transport ou une reconnexion Wi-Fi;
 - met à jour `system_status`.
 
 Le dictionnaire partagé ressemble à ceci :
@@ -545,23 +589,36 @@ Le bouton **Assistant initial** ouvre une copie interactive de la véritable
 page de première configuration. Cette prévisualisation utilise 68 DEL simulées
 et ne commande aucun matériel.
 
+L’adresse `http://127.0.0.1:8765/admin-preview` ouvre aussi le véritable
+panneau de contrôle avec le NIP `metro68`. Ses réglages restent en mémoire
+jusqu’à l’arrêt du simulateur et ses commandes de redémarrage ou de maintenance
+sont simulées; elles ne touchent jamais le Pico.
+
 ### Modes disponibles
 
 | Mode | Utilité |
 |---|---|
-| Direct — trains théoriques | Horaire GTFS actuel avec alertes STM |
+| Direct — style Metroboard | Marqueurs de trains estimés selon le GTFS, avec alertes STM |
 | Mode nuit — respiration paisible | Prévisualise le cycle nocturne de 18 secondes; sa luminosité est amplifiée à l’écran |
 | Tout normal | Affichage statique sans trains ni perturbations |
 | Interruption verte | Test du clignotement rouge de la ligne verte |
 | Interruption orange | Vérifie que l’orange s’arrête pendant que les autres lignes continuent |
 | Ralentissement orange | Test de la pulsation ambre |
 | Berri-UQAM fermée | Test d’une perturbation limitée à une station |
+| Reprise de la ligne orange | Test du balayage de retour au service |
 | Test séquentiel | Allume les 68 DEL virtuelles une à une |
+
+Le menu contient aussi tous les états de mise en marche, de connexion, de mise
+à jour et d’erreur. Ils reproduisent le même vocabulaire visuel que le Pico.
 
 Dans le mode direct :
 
 - les trains sont recalculés chaque seconde dans l’interface Web;
 - l’état STM est actualisé toutes les 60 secondes;
+- les alertes proviennent uniquement de STM i3 v2, comme sur le Pico; les
+  alertes Transit ne sont pas fusionnées à l’affichage;
+- si une lecture STM échoue, le dernier état valide est conservé, comme sur le
+  Pico;
 - le nombre de trains théoriques de chaque ligne est affiché;
 - « alertes STM i3 v2 » confirme que la clé est active.
 
@@ -574,15 +631,54 @@ python3 simulator/live_status.py --watch
 
 Arrêter le serveur avec `Ctrl-C`.
 
+## Panneau de contrôle du Pico
+
+Le Pico sert une seconde interface Web pendant son fonctionnement normal. La
+console affiche son adresse après la connexion, par exemple :
+
+```text
+Panneau de contrôle: http://192.168.68.107/admin
+```
+
+Le téléphone ou l’ordinateur doit être connecté au même réseau Wi‑Fi. Le NIP
+provient de `CONTROL_PANEL_PIN` dans `secrets.py`; si la variable est absente,
+le NIP de départ est `metro68`. Il est recommandé de le personnaliser.
+
+Le panneau, disponible en français, anglais, espagnol et italien, permet de :
+
+- voir l’heure montréalaise, le Wi‑Fi, l’adresse IP, les trains, la mémoire,
+  le GTFS, les lignes et les échecs de lecture STM;
+- régler séparément la luminosité de jour, de nuit et des signaux techniques;
+- choisir le mode automatique, jour forcé, nuit forcée ou éteint;
+- changer la fenêtre nocturne;
+- lancer un test des 68 DEL, des quatre lignes ou de la carte entière;
+- demander une lecture STM ou une vérification GTFS immédiate;
+- reconnecter le Wi‑Fi ou redémarrer le Pico;
+- effacer l’association des stations après une confirmation explicite.
+
+Les réglages validés sont écrits dans `user_settings.json`. Les plafonds de
+sécurité demeurent prioritaires : le panneau ne peut pas dépasser 20 % le jour,
+1,2 % au sommet de la respiration nocturne ni 15 % pour les signaux. La page
+`admin.html` est lue par petits morceaux seulement lorsqu’un navigateur la
+demande; elle ne demeure pas en mémoire et l’animation à 25 images/seconde
+continue dans sa tâche indépendante.
+
+Le panneau est volontairement limité au réseau local et utilise HTTP. Il ne
+doit pas être exposé directement sur Internet. Si le Pico n’a plus de Wi‑Fi ou
+de courant, il faut intervenir localement.
+
 ## Réglages principaux
 
-Les paramètres se trouvent dans [`pico/config.py`](../pico/config.py).
+Les valeurs de départ se trouvent dans [`pico/config.py`](../pico/config.py).
+Les changements effectués dans le panneau sont conservés séparément dans
+`user_settings.json` et ont priorité au prochain démarrage.
 
 ```python
 DATA_PIN = 0
 NUMBER_OF_LEDS = 68
 BRIGHTNESS = 0.20
-TRAIN_BASE_LEVEL = 0.15
+TRAIN_BASE_LEVEL = 0.0
+TRAIN_TIMING_VARIATION_SECONDS = 28
 PIXEL_TIMING = 1
 
 LED_CURRENT_LIMIT_MA = 1000
@@ -641,26 +737,29 @@ Le projet contient maintenant une chaîne de mise à jour complète :
    de la STM;
 2. `scripts/build_metro_schedule.py` produit un candidat compact;
 3. `scripts/publish_gtfs_update.py` ignore les reconstructions identiques et
-   publie `updates/latest.json` avec le fichier et son empreinte SHA-256;
-4. `pico/gtfs_updater.py` vérifie quotidiennement le manifeste, télécharge le
+   publie `updates/latest.json` avec le fichier et son empreinte SHA-256, puis
+   synchronise la copie prête à déposer sur le Pico;
+4. `scripts/update_package_manifest.py` recalcule les empreintes du livrable;
+5. `pico/gtfs_updater.py` vérifie quotidiennement le manifeste, télécharge le
    fichier par blocs de 1 Ko, le valide, garde une sauvegarde, puis redémarre;
-5. si le téléchargement ou l’écriture est interrompu, l’ancien horaire reste
+6. si le téléchargement ou l’écriture est interrompu, l’ancien horaire reste
    utilisable ou est restauré au démarrage suivant.
 
-Pour activer le téléchargement sur le cadre, publier ce projet dans un dépôt
-GitHub **public**, puis régler dans `pico/config.py` :
+Les données sont publiées automatiquement dans le dépôt public séparé
+[`nvldboy/cadre-metro-montreal-updates`](https://github.com/nvldboy/cadre-metro-montreal-updates).
+Le dépôt principal peut donc rester privé. La configuration livrée contient :
 
 ```python
 GTFS_AUTO_UPDATE_ENABLED = True
 GTFS_UPDATE_MANIFEST_URL = (
-    "https://raw.githubusercontent.com/UTILISATEUR/DEPOT/"
-    "main/updates/latest.json"
+    "https://raw.githubusercontent.com/nvldboy/"
+    "cadre-metro-montreal-updates/main/updates/latest.json"
 )
 ```
 
 Ne jamais ajouter `pico/secrets.py` au dépôt. Il est déjà exclu par
-`.gitignore`. Sans URL de manifeste, la mise à jour automatique demeure
-désactivée et l’horaire intégré continue de fonctionner.
+`.gitignore`. Le Pico vérifie le manifeste une fois par jour et conserve
+l’horaire intégré si le service public est temporairement inaccessible.
 
 ## Tests du programme
 
@@ -680,7 +779,7 @@ Les tests vérifient notamment :
 - les ralentissements;
 - les stations nommées dans les alertes;
 - l’exclusion des simples fermetures d’accès;
-- l’interpolation entre deux stations;
+- le saut indépendant des marqueurs entre deux stations;
 - le changement d’heure de Montréal;
 - l’arrêt ciblé d’une seule ligne;
 - la cohérence entre `stations.py` et `stations_map.json`.
@@ -699,6 +798,8 @@ Les tests vérifient notamment :
 | Une station incorrecte s’allume | Supprimer `led_mapping.json`, redémarrer et refaire l’association de la chaîne |
 | Toutes les DEL sont magenta | Compléter le Wi‑Fi dans `secrets.py` |
 | Le Pico reste avant l’animation | Vérifier le Wi‑Fi 2,4 GHz, Internet et la synchronisation NTP |
+| Le panneau ne s’ouvre pas | Vérifier l’adresse IP imprimée dans Thonny et que le téléphone est sur le même Wi‑Fi; ouvrir `/admin` |
+| Le NIP du panneau est refusé | Vérifier `CONTROL_PANEL_PIN` dans `secrets.py`; sans cette variable, utiliser `metro68` |
 | Les trains sont visibles, mais pas les alertes STM | Vérifier la clé publique, l’API ajoutée à l’application et l’état publié de la clé |
 | L’API répond `Invalid API Key` | Utiliser `API Key`, pas le secret partagé, puis enregistrer et publier la clé |
 | Aucune position de train n’apparaît | Vérifier l’heure, la période GTFS et si le métro est normalement en service |
@@ -716,6 +817,10 @@ Les tests vérifient notamment :
 | `pico/power_safety.py` | Plafond RGB et limiteur global de courant |
 | `pico/setup_assistant.py` | Point d’accès et serveur Web de première configuration |
 | `pico/setup.html` | Interface mobile de l’assistant |
+| `pico/control_panel.py` | Serveur Web local protégé par NIP |
+| `pico/admin.html` | Panneau de contrôle en quatre langues |
+| `pico/runtime_settings.py` | Validation et sauvegarde des réglages Web |
+| `user_settings.json` sur le Pico | Préférences persistantes du panneau |
 | `pico/train_schedule.py` | Calcul et interpolation des trains |
 | `pico/metro_schedule_data.py` | Horaire GTFS compact |
 | `pico/stations.py` | Noms, couleurs et index logiques |

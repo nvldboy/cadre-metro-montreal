@@ -10,11 +10,26 @@ from config import (
     LED_MAX_CHANNEL_VALUE,
     NUMBER_OF_LEDS,
 )
-from night_mode import is_night, is_night_hour
-from power_safety import estimate_frame_current_ma, limit_frame
+from night_mode import anchored_clock_parts, is_night, is_night_hour
+from power_safety import (
+    color_for_pixel_driver,
+    estimate_frame_current_ma,
+    frame_requires_limiting,
+    limit_frame,
+)
 
 
 class PowerSafetyTests(unittest.TestCase):
+    def test_large_epoch_keeps_milliseconds_separate_from_float(self):
+        epoch, milliseconds = anchored_clock_parts(1786327680, 1234)
+        self.assertEqual(epoch, 1786327681)
+        self.assertEqual(milliseconds, 234)
+        self.assertIs(type(epoch), int)
+        self.assertIs(type(milliseconds), int)
+
+    def test_pixel_driver_compensates_red_green_order(self):
+        self.assertEqual(color_for_pixel_driver((10, 20, 30)), (20, 10, 30))
+
     def test_full_white_frame_is_clamped_below_current_budget(self):
         frame = [(255, 255, 255)] * NUMBER_OF_LEDS
         limited = limit_frame(frame)
@@ -30,6 +45,11 @@ class PowerSafetyTests(unittest.TestCase):
                 for channel in color
             )
         )
+        self.assertTrue(frame_requires_limiting(frame))
+
+    def test_low_power_frame_does_not_trigger_warning(self):
+        frame = [(0, 20, 0)] * NUMBER_OF_LEDS
+        self.assertFalse(frame_requires_limiting(frame))
 
     def test_negative_and_excessive_channels_are_clamped(self):
         frame = [(-50, 12, 999)] + [(0, 0, 0)] * (NUMBER_OF_LEDS - 1)

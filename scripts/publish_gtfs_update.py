@@ -11,6 +11,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CURRENT = ROOT / "pico" / "metro_schedule_data.py"
 DEFAULT_OUTPUT_DIR = ROOT / "updates"
+DEFAULT_PACKAGED = (
+    ROOT
+    / "PICO_2_W_PRET_A_COPIER"
+    / "CONTENU_A_COPIER_SUR_LE_PICO"
+    / "metro_schedule_data.py"
+)
 SCHEDULE_FILENAME = "metro_schedule_data.py"
 MANIFEST_FILENAME = "latest.json"
 MAX_SCHEDULE_BYTES = 250_000
@@ -69,7 +75,7 @@ def _install_candidate(candidate, current, allow_older=False):
     return True
 
 
-def publish(current, output_dir):
+def publish(current, output_dir, packaged=DEFAULT_PACKAGED):
     feed, generated_at = _metadata(current)
     schedule_size = current.stat().st_size
     if schedule_size <= 0 or schedule_size > MAX_SCHEDULE_BYTES:
@@ -80,6 +86,9 @@ def publish(current, output_dir):
     output_dir.mkdir(parents=True, exist_ok=True)
     published_schedule = output_dir / SCHEDULE_FILENAME
     shutil.copyfile(current, published_schedule)
+    if packaged is not None:
+        packaged.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(current, packaged)
     digest = hashlib.sha256(published_schedule.read_bytes()).hexdigest()
     manifest = {
         "schema": 1,
@@ -113,6 +122,11 @@ def main():
         type=Path,
         default=DEFAULT_OUTPUT_DIR,
     )
+    parser.add_argument(
+        "--packaged",
+        type=Path,
+        default=DEFAULT_PACKAGED,
+    )
     parser.add_argument("--allow-older", action="store_true")
     args = parser.parse_args()
 
@@ -123,7 +137,7 @@ def main():
             args.current,
             allow_older=args.allow_older,
         )
-    manifest = publish(args.current, args.output_dir)
+    manifest = publish(args.current, args.output_dir, args.packaged)
     print("Horaire modifié:", "oui" if changed else "non")
     print("Période:", manifest["feed_start"], "à", manifest["feed_end"])
     print("Version:", manifest["feed_version"])
