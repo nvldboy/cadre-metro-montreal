@@ -1,7 +1,30 @@
-secrets.py
-pico/secrets.py
+# Secrets et réglages propres à chaque cadre
+**/secrets.py
+!**/secrets.example.py
+**/user_settings.json
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+
+# Association physique propre à chaque affiche
 pico/led_mapping.json
 pico/led_mapping_draft.json
+
+# NotiTV est un projet distinct et ne doit jamais entrer dans ce dépôt
+/notitv/
+/pico/notitv_*.py
+/simulator/notitv.html
+/tests/test_notitv_*.py
+/PICO_2_W_PRET_A_COPIER/**/*notitv*
+/PICO_2_W_PRET_A_COPIER/**/*NotiTV*
+/PICO_2_W_PRET_A_COPIER/**/*NOTITV*
+
+# Fichiers générés localement
 __pycache__/
 *.pyc
 data/gtfs_stm.zip
